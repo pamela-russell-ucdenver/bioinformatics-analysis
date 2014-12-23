@@ -16,6 +16,7 @@ import guttmanlab.core.util.StringParser;
 public class CuffdiffRecord {
 	
 	private String id;
+	private String geneID;
 	private String gene;
 	private String locus;
 	private String sample1;
@@ -36,18 +37,19 @@ public class CuffdiffRecord {
 		StringParser s = new StringParser();
 		s.parse(cuffdiffOutputLine);
 		id = s.asString(0);
-		gene = s.asString(1);
-		locus = s.asString(2);
-		sample1 = s.asString(3);
-		sample2 = s.asString(4);
-		testStatus = s.asString(5);
-		fpkm1 = s.asDouble(6);
-		fpkm2 = s.asDouble(7);
-		log2fpkmRatio = s.asDouble(8);
-		testStatistic = s.asDouble(9);
-		pVal = s.asDouble(10);
-		qVal = s.asDouble(11);
-		String sig = s.asString(12);
+		geneID = s.asString(1);
+		gene = s.asString(2);
+		locus = s.asString(3);
+		sample1 = s.asString(4);
+		sample2 = s.asString(5);
+		testStatus = s.asString(6);
+		fpkm1 = s.asDouble(7);
+		fpkm2 = s.asDouble(8);
+		log2fpkmRatio = s.asDouble(9);
+		testStatistic = s.asDouble(10);
+		pVal = s.asDouble(11);
+		qVal = s.asDouble(12);
+		String sig = s.asString(13);
 		if(sig.equals("yes")) isSignificant = true;
 		if(sig.equals("no")) isSignificant = false;
 	}
@@ -82,6 +84,10 @@ public class CuffdiffRecord {
 
 	public String getGene() {
 		return gene;
+	}
+	
+	public String getGeneID() {
+		return geneID;
 	}
 
 	public String getLocus() {

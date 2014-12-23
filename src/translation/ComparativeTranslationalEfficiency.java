@@ -97,12 +97,12 @@ public class ComparativeTranslationalEfficiency {
 		logger.info("Writing table with log fold change of CDS TE scores for " + numGenes + " genes in " + geneBed + "...");
 		CloseableIterator<Gene> iter = genes.sortedIterator();
 		String header = "gene\t";
-		header += "ribosome_count_CDS_" + sample1.getSampleName() + "\t";
-		header += "control_count_CDS_" + sample1.getSampleName() + "\t";
-		header += "TE_score_CDS_" + sample1.getSampleName() + "\t";
-		header += "ribosome_count_CDS_" + sample2.getSampleName() + "\t";
-		header += "control_count_CDS_" + sample2.getSampleName() + "\t";
-		header += "TE_score_CDS_" + sample2.getSampleName() + "\t";
+		header += "ribosome_count_CDS_" + sample1.getRibosomeName() + "\t";
+		header += "control_count_CDS_" + sample1.getRibosomeName() + "\t";
+		header += "TE_score_CDS_" + sample1.getRibosomeName() + "\t";
+		header += "ribosome_count_CDS_" + sample2.getRibosomeName() + "\t";
+		header += "control_count_CDS_" + sample2.getRibosomeName() + "\t";
+		header += "TE_score_CDS_" + sample2.getRibosomeName() + "\t";
 		header += "log" + logBase + "_fold_change";
 		w.write(header + "\n");
 		while(iter.hasNext()) {

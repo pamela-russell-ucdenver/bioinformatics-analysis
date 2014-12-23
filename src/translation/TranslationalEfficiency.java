@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import score.AbstractRegionScore;
 import score.RegionScore;
 import bam.BamCountRegionOverlappers;
 import broad.core.math.ScanStatistics;
@@ -23,7 +24,7 @@ import guttmanlab.core.util.CommandLineParser;
 import guttmanlab.core.util.CountLogger;
 import guttmanlab.core.util.StringParser;
 
-public class TranslationalEfficiency implements RegionScore<Gene> {
+public class TranslationalEfficiency extends AbstractRegionScore<Gene> {
 	
 	private double ribosomeGlobalGenomeTotal;
 	private double controlGlobalGenomeTotal;
@@ -45,12 +46,16 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 	private boolean strandSpecific;
 	private double controlGlobalGenomeLambda;
 	private double ribosomeGlobalGenomeLambda;
-	private String sampleName;
+	private String ribosomeName;
 	private String controlName;
+	private String experimentID;
 	
 	public static Logger logger = Logger.getLogger(TranslationalEfficiency.class.getName());
 	
+	public TranslationalEfficiency() {}
+	
 	/**
+	 * Automatically set experiment name to ribosome sample name
 	 * @param ribosomeBam Bam file of ribosome profiling sample
 	 * @param controlBam Bam file of control sample
 	 * @param geneBed Bed file of genome annotation
@@ -63,9 +68,26 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 	 * @throws IOException
 	 */
 	public TranslationalEfficiency(String ribosomeBam, String controlBam, String geneBed, String chrSizes, double ribosomeGenomeTotal, double controlGenomeTotal, double ribosomeExonTotal, double controlExonTotal, boolean isStrandSpecific) throws IOException {
+		this(ribosomeBam, controlBam, geneBed, chrSizes, ribosomeGenomeTotal, controlGenomeTotal, ribosomeExonTotal, controlExonTotal, isStrandSpecific, null);
+	}
+	
+	/**
+	 * @param ribosomeBam Bam file of ribosome profiling sample
+	 * @param controlBam Bam file of control sample
+	 * @param geneBed Bed file of genome annotation
+	 * @param chrSizes Chromsome size file
+	 * @param ribosomeGenomeTotal Optional total number of ribosome reads mapped to genome (instead of computing from data)
+	 * @param controlGenomeTotal Optional total number of control reads mapped to genome (instead of computing from data)
+	 * @param ribosomeExonTotal Optional total number of ribosome reads mapped to exons (instead of computing from data)
+	 * @param controlExonTotal Optional total number of control reads mapped to exons (instead of computing from data)
+	 * @param isStrandSpecific Whether the libraries are strand specific
+	 * @param experimentId Experiment ID
+	 * @throws IOException
+	 */
+	public TranslationalEfficiency(String ribosomeBam, String controlBam, String geneBed, String chrSizes, double ribosomeGenomeTotal, double controlGenomeTotal, double ribosomeExonTotal, double controlExonTotal, boolean isStrandSpecific, String experimentId) throws IOException {
 		logger.info("");
 		
-		logger.info("Creating TranslationalEfficiency object...");
+		logger.info("Creating translational efficiency object...");
 		
 		// Make control name from control bam file
 		StringParser t = new StringParser();
@@ -80,8 +102,15 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 		s.parse(ribosomeBam, "/");
 		String withExtension = s.asString(s.getFieldCount() - 1);
 		String s2 = withExtension.replaceAll(".sorted.bam", "");
-		sampleName = s2.replaceAll(".bam", "");
-		logger.info("Ribosome sample name is " + sampleName + ".");
+		ribosomeName = s2.replaceAll(".bam", "");
+		logger.info("Ribosome sample name is " + ribosomeName + ".");
+		
+		// Experiment ID
+		if(experimentId == null) {
+			experimentID = ribosomeName;
+		} else {
+			experimentID = experimentId;
+		}
 		
 		// Set whether the libraries are strand specific (affects counts over annotations)
 		strandSpecific = isStrandSpecific;
@@ -110,7 +139,7 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 		logger.info(controlGlobalGenomeTotal + " total reads in control fraction.");
 		ribosomeGlobalGenomeTotal = ribosomeGenomeTotal;
 		if(ribosomeGlobalGenomeTotal <= 0) {
-			logger.info("Computing total genome read count for ribosome sample " + sampleName + "...");
+			logger.info("Computing total genome read count for ribosome sample " + ribosomeName + "...");
 			ribosomeGlobalGenomeTotal = ribosomeData.getNumAnnotations();
 		}
 		logger.info(ribosomeGlobalGenomeTotal + " total reads in ribosome fraction.");
@@ -130,20 +159,24 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 		controlGlobalExonTotal = controlExonTotal;
 		logger.info(controlGlobalExonTotal + " total exon reads in control fraction.");
 		if(ribosomeExonTotal < 0) {
-			logger.info("Computing total exon read count for ribosome sample " + sampleName + "...");
+			logger.info("Computing total exon read count for ribosome sample " + ribosomeName + "...");
 			ribosomeExonTotal = exonTotal(geneBed, false);
 		}
 		ribosomeGlobalExonTotal = ribosomeExonTotal;
 		logger.info(ribosomeGlobalExonTotal + " total exon reads in ribosome fraction.");
 		normalizationFactor = ribosomeGlobalExonTotal / controlGlobalExonTotal;
 		logger.info("Normalization factor is " + normalizationFactor + ".");
+		
+		logger.info("");
+		logger.info("Done creating translational efficiency object for " + ribosomeName + " and " + controlName + ".");
+		
 	}
 	
 	/**
 	 * @return Ribosome sample name
 	 */
-	public String getSampleName() {
-		return sampleName;
+	public String getRibosomeName() {
+		return ribosomeName;
 	}
 	
 	/**
@@ -163,10 +196,11 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 	 * @param ribosomeExonTotal Optional total number of ribosome reads mapped to exons (instead of computing from data)
 	 * @param controlExonTotal Optional total number of control reads mapped to exons (instead of computing from data)
 	 * @param isStrandSpecific Whether the libraries are strand specific
+	 * @param experimentId Experiment ID
 	 * @throws IOException
 	 */
-	public static TranslationalEfficiency factory(String ribosomeBam, String controlBam, String geneBed, String chrSizes, double ribosomeGenomeTotal, double controlGenomeTotal, double ribosomeExonTotal, double controlExonTotal, boolean isStrandSpecific) throws IOException {
-		return new TranslationalEfficiency(ribosomeBam, controlBam, geneBed, chrSizes, ribosomeGenomeTotal, controlGenomeTotal, ribosomeExonTotal, controlExonTotal, isStrandSpecific);
+	public static TranslationalEfficiency factory(String ribosomeBam, String controlBam, String geneBed, String chrSizes, double ribosomeGenomeTotal, double controlGenomeTotal, double ribosomeExonTotal, double controlExonTotal, boolean isStrandSpecific, String experimentId) throws IOException {
+		return new TranslationalEfficiency(ribosomeBam, controlBam, geneBed, chrSizes, ribosomeGenomeTotal, controlGenomeTotal, ribosomeExonTotal, controlExonTotal, isStrandSpecific, experimentId);
 	}
 	
 	/**
@@ -404,6 +438,7 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 		p.addDoubleArg("-mte", "Control global exon total (instead of computing from data)", false, -1);
 		p.addDoubleArg("-rte", "Ribosome global exon total (instead of computing from data)", false, -1);
 		p.addBooleanArg("-ss", "Libraries are strand specific", false, true);
+		p.addStringArg("-e", "Experiment ID", true);
 		p.parse(args);
 		String ribosomeBam = p.getStringArg("-r");
 		String controlBam = p.getStringArg("-m");
@@ -417,8 +452,9 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 		double ribosomeExonTotal = p.getDoubleArg("-rte");
 		double controlExonTotal = p.getDoubleArg("-mte");
 		boolean strandSpecific = p.getBooleanArg("-ss");
+		String experimentId = p.getStringArg("-e");
 		
-		TranslationalEfficiency te = new TranslationalEfficiency(ribosomeBam, controlBam, geneAnnotationBed, chrSizes, ribosomeGenomeTotal, controlGenomeTotal, ribosomeExonTotal, controlExonTotal, strandSpecific);
+		TranslationalEfficiency te = new TranslationalEfficiency(ribosomeBam, controlBam, geneAnnotationBed, chrSizes, ribosomeGenomeTotal, controlGenomeTotal, ribosomeExonTotal, controlExonTotal, strandSpecific, experimentId);
 		
 		if(outputBed != null) te.writeCdsTEsToBed(geneBed, outputBed);
 		
@@ -438,5 +474,63 @@ public class TranslationalEfficiency implements RegionScore<Gene> {
 	public boolean isSignificant(double score) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public String getExperimentID() {
+		return experimentID;
+	}
 	
+	@Override
+	public RegionScore<Gene> createFromConfigFileLine(String line) {
+		validateConfigFileLine(line);
+		StringParser s = new StringParser();
+		s.parse(line);
+		String rb = s.asString(0);
+		String cb = s.asString(1);
+		String geneBed = s.asString(2);
+		String chrSizes = s.asString(3);
+		double rgt = s.asDouble(4);
+		double cgt = s.asDouble(5);
+		double ret = s.asDouble(6);
+		double cet = s.asDouble(7);
+		boolean ss = s.asBoolean(8);
+		try {
+			return new TranslationalEfficiency(rb, cb, geneBed, chrSizes, rgt, cgt, ret, cet, ss);
+		} catch (IOException e) {
+			logger.error("Caugh exception:");
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		return null;
+	}
+
+	@Override
+	public String getConfigFileLineFormat() {
+		return "ribosomeBam\tcontrolBam\tgeneAnnotationBed\tchrSizes\tribosomeGenomeTotal\tcontrolGenomeTotal\tribosomeExonTotal\tcontrolExonTotal\tstrandSpecific\texperimentId";
+	}
+
+	@SuppressWarnings("unused")
+	@Override
+	public void validateConfigFileLine(String line) {
+		StringParser s = new StringParser();
+		s.parse(line);
+		if(s.getFieldCount() != 9) {
+			crashWithHelpMessage(line, logger);
+		}
+		try {
+			String rb = s.asString(0);
+			String cb = s.asString(1);
+			String geneBed = s.asString(2);
+			String chrSizes = s.asString(3);
+			double rgt = s.asDouble(4);
+			double cgt = s.asDouble(5);
+			double ret = s.asDouble(6);
+			double cet = s.asDouble(7);
+			boolean ss = s.asBoolean(8);
+		} catch(Exception e) {
+			crashWithHelpMessage(line, logger);
+		}
+	}
+
+
 }

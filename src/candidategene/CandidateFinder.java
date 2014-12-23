@@ -33,7 +33,7 @@ public interface CandidateFinder<T extends Annotation> {
 	public String getOutputBedLine(T region);
 	
 	/**
-	 * @return A header line for the output table
+	 * @return A header line for the output table, not including newline character
 	 */
 	public String getOutputTableHeader();
 	

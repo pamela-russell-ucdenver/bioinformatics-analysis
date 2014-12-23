@@ -5,6 +5,9 @@ import java.io.IOException;
 import org.apache.log4j.Logger;
 
 import guttmanlab.core.annotation.Gene;
+import guttmanlab.core.util.StringParser;
+import score.AbstractRegionScore;
+import score.DifferentialRegionScore;
 import score.RegionScore;
 
 /**
@@ -12,12 +15,14 @@ import score.RegionScore;
  * @author prussell
  *
  */
-public class DifferentialTranslationalEfficiency implements RegionScore<Gene> {
+public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gene> implements DifferentialRegionScore<Gene> {
 	
 	private TranslationalEfficiency te1;
 	private TranslationalEfficiency te2;
 	private double log2ratioCutoff;
 	public static Logger logger = Logger.getLogger(DifferentialTranslationalEfficiency.class.getName());
+	
+	public DifferentialTranslationalEfficiency() {}
 	
 	/**
 	 * @param translationalEfficiency1 Translational efficiency object 1
@@ -25,9 +30,13 @@ public class DifferentialTranslationalEfficiency implements RegionScore<Gene> {
 	 * @param cutoffLog2ratio Cutoff for absolute value of log2 TE ratio
 	 */
 	public DifferentialTranslationalEfficiency(TranslationalEfficiency translationalEfficiency1, TranslationalEfficiency translationalEfficiency2, double cutoffLog2ratio) {
+		logger.info("");
+		logger.info("Instantiating differential translational efficiency object...");
 		te1 = translationalEfficiency1;
 		te2 = translationalEfficiency2;
 		log2ratioCutoff = cutoffLog2ratio;
+		logger.info("");
+		logger.info("Done instantiating differential translational efficiency object for experiments " + te1.getExperimentID() + " and " + te2.getExperimentID());
 	}
 	
 	/**
@@ -75,14 +84,14 @@ public class DifferentialTranslationalEfficiency implements RegionScore<Gene> {
 	 * @return Sample 1 name
 	 */
 	public String getRibosome1Name() {
-		return te1.getSampleName();
+		return te1.getRibosomeName();
 	}
 	
 	/**
 	 * @return Sample 2 name
 	 */
 	public String getRibosome2Name() {
-		return te2.getSampleName();
+		return te2.getRibosomeName();
 	}
 	
 	/**
@@ -115,5 +124,94 @@ public class DifferentialTranslationalEfficiency implements RegionScore<Gene> {
 	public boolean isSignificant(double score) {
 		return Math.abs(score) >= log2ratioCutoff;
 	}
+
+	@Override
+	public String getExperimentID1() {
+		return te1.getExperimentID();
+	}
+
+	@Override
+	public String getExperimentID2() {
+		return te2.getExperimentID();
+	}
+
+	@Override
+	public boolean experiment2IsUp(Gene gene) {
+		return te2.getScore(gene) > te1.getScore(gene);
+	}
+
+	@Override
+	public String getExperimentID() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public RegionScore<Gene> createFromConfigFileLine(String line) {
+		StringParser s = new StringParser();
+		s.parse(line);
+		String rib1 = s.asString(0);
+		String rib2 = s.asString(1);
+		String con1 = s.asString(2);
+		String con2 = s.asString(3);
+		String geneBed = s.asString(4);
+		String chrSizes = s.asString(5);
+		double rgt1 = s.asDouble(6);
+		double rgt2 = s.asDouble(7);
+		double cgt1 = s.asDouble(8);
+		double cgt2 = s.asDouble(9);
+		double ret1 = s.asDouble(10);
+		double ret2 = s.asDouble(11);
+		double cet1 = s.asDouble(12);
+		double cet2 = s.asDouble(13);
+		boolean ss = s.asBoolean(14);
+		double cutoff = s.asDouble(15);
+		try {
+			return factory(rib1, rib2, con1, con2, geneBed, chrSizes, rgt1, rgt2, cgt1, cgt2, ret1, ret2, cet1, cet2, ss, cutoff);
+		} catch (IOException e) {
+			logger.warn("Caught exception:");
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		return null;
+	}
+	
+	@Override
+	public String getConfigFileLineFormat() {
+		String rtrn = "ribosomeBam1\tribosomeBam2\tcontrolBam1\tcontrolBam2\tgeneBed\tchrSizes\t";
+		rtrn += "ribosomeGenomeTotal1\tribosomeGenomeTotal2\tcontrolGenomeTotal1\tcontrolGenomeTotal2\t";
+		rtrn += "ribosomeExonTotal1\tribosomeExonTotal2\tcontrolExonTotal1\tcontrolExonTotal2\tisStrandSpecific\tcutoffLog2ratio";
+		return rtrn;
+	}
+
+	@SuppressWarnings("unused")
+	@Override
+	public void validateConfigFileLine(String line) {
+		StringParser s = new StringParser();
+		s.parse(line);
+		if(s.getFieldCount() != 16) {
+			crashWithHelpMessage(line, logger);
+		}
+		try {
+			String rib1 = s.asString(0);
+			String rib2 = s.asString(1);
+			String con1 = s.asString(2);
+			String con2 = s.asString(3);
+			String geneBed = s.asString(4);
+			String chrSizes = s.asString(5);
+			double rgt1 = s.asDouble(6);
+			double rgt2 = s.asDouble(7);
+			double cgt1 = s.asDouble(8);
+			double cgt2 = s.asDouble(9);
+			double ret1 = s.asDouble(10);
+			double ret2 = s.asDouble(11);
+			double cet1 = s.asDouble(12);
+			double cet2 = s.asDouble(13);
+			boolean ss = s.asBoolean(14);
+			double cutoff = s.asDouble(15);
+		} catch(Exception e) {
+			crashWithHelpMessage(line, logger);
+		}
+	}
+
 
 }
