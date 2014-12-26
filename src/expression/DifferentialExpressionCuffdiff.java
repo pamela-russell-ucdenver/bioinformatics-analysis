@@ -9,6 +9,7 @@ import guttmanlab.core.annotation.Gene;
 import guttmanlab.core.util.StringParser;
 import score.AbstractRegionScore;
 import score.DifferentialRegionScore;
+import score.GenericRegionScore;
 import score.RegionScore;
 
 public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> implements DifferentialRegionScore<Gene> {
@@ -33,12 +34,12 @@ public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> im
 
 	/**
 	 * @param region Gene
-	 * @return Cuffdiff output record for the gene
+	 * @return Cuffdiff output record for the gene or null if name doesn't exist
 	 */
 	public CuffdiffRecord getRecord(Gene region) {
 		String name = region.getName();
 		if(!recordsByID.containsKey(name)) {
-			throw new IllegalArgumentException("Map of records does not contain key " + name + ".");
+			return null;
 		}
 		return recordsByID.get(name);
 	}
@@ -65,13 +66,13 @@ public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> im
 
 	@Override
 	public boolean experiment2IsUp(Gene gene) {
-		CuffdiffRecord record = recordsByID.get(gene);
+		CuffdiffRecord record = recordsByID.get(gene.getName());
 		return record.getLog2fpkmRatio() > 0;
 	}
 
 	@Override
 	public String getExperimentID() {
-		throw new UnsupportedOperationException();
+		return "diff_exp_cuffdiff_" + getExperimentID1() + "_" + getExperimentID2();
 	}
 
 	@Override
@@ -89,7 +90,7 @@ public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> im
 
 	@Override
 	public String getConfigFileLineFormat() {
-		return "cuffdiff_isoform_exp_diff_file";
+		return DifferentialExpressionCuffdiff.class.getSimpleName() + ":\tcuffdiff_isoform_exp_diff_file";
 	}
 
 	@Override

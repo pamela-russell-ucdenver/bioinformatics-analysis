@@ -90,8 +90,13 @@ public class DifferentialRegionScoreUnion implements DifferentialRegionScore<Gen
 	@Override
 	public boolean experiment2IsUp(Gene region) {
 		for(DifferentialRegionScore<Gene> score : scores) {
-			if(score.experiment2IsUp(region)) {
-				return true;
+			try {
+				if(score.experiment2IsUp(region)) {
+					return true;
+				}
+			} catch(Exception e) {
+				logger.warn(score.getClass().getSimpleName() + " can't asses which sample is up for gene " + region.getName() + ". Throwing exception.");
+				throw(e);
 			}
 		}
 		return false;

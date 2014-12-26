@@ -81,67 +81,63 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		while(b.ready()) {
 			String line = b.readLine();
 			s.parse(line);
-			try {
-				ScoreType scoreType = ScoreType.fromString(s.asString(0));
-				SignificanceType sigType = SignificanceType.fromString(s.asString(1));
-				if(scoreType.equals(ScoreType.INTERSECTION_DIFFERENTIAL)) {
-					String expID = s.asString(2);
-					@SuppressWarnings("unchecked")
-					DifferentialRegionScore<Gene> score = (DifferentialRegionScore<Gene>) RegionScoreFactory.createDiffScoreFromConfigFileLine(line, 3);
-					if(!intersectionDiffScores.containsKey(expID)) {
-						intersectionDiffScores.put(expID, new HashMap<SignificanceType, Collection<DifferentialRegionScore<Gene>>>());
-						intersectionDiffScores.get(expID).put(sigType, new ArrayList<DifferentialRegionScore<Gene>>());
-					}
-					intersectionDiffScores.get(expID).get(sigType).add(score);
-					continue;
+			ScoreType scoreType = ScoreType.fromString(s.asString(0));
+			SignificanceType sigType = SignificanceType.fromString(s.asString(1));
+			if(scoreType.equals(ScoreType.INTERSECTION_DIFFERENTIAL)) {
+				String expID = s.asString(2);
+				@SuppressWarnings("unchecked")
+				DifferentialRegionScore<Gene> score = (DifferentialRegionScore<Gene>) RegionScoreFactory.createDiffScoreFromConfigFileLine(line, 3);
+				if(!intersectionDiffScores.containsKey(expID)) {
+					intersectionDiffScores.put(expID, new HashMap<SignificanceType, Collection<DifferentialRegionScore<Gene>>>());
+					intersectionDiffScores.get(expID).put(sigType, new ArrayList<DifferentialRegionScore<Gene>>());
 				}
-				if(scoreType.equals(ScoreType.INTERSECTION_REGULAR)) {
-					String expID = s.asString(2);
-					@SuppressWarnings("unchecked")
-					RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 3);
-					if(!intersectionScores.containsKey(expID)) {
-						intersectionScores.put(expID, new HashMap<SignificanceType, Collection<RegionScore<Gene>>>());
-						intersectionScores.get(expID).put(sigType, new ArrayList<RegionScore<Gene>>());
-					}
-					intersectionScores.get(expID).get(sigType).add(score);
-					continue;
+				intersectionDiffScores.get(expID).get(sigType).add(score);
+				continue;
+			}
+			if(scoreType.equals(ScoreType.INTERSECTION_REGULAR)) {
+				String expID = s.asString(2);
+				@SuppressWarnings("unchecked")
+				RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 3);
+				if(!intersectionScores.containsKey(expID)) {
+					intersectionScores.put(expID, new HashMap<SignificanceType, Collection<RegionScore<Gene>>>());
+					intersectionScores.get(expID).put(sigType, new ArrayList<RegionScore<Gene>>());
 				}
-				if(scoreType.equals(ScoreType.SINGLE_DIFFERENTIAL)) {
-					@SuppressWarnings("unchecked")
-					DifferentialRegionScore<Gene> score = (DifferentialRegionScore<Gene>) RegionScoreFactory.createDiffScoreFromConfigFileLine(line, 2);
-					diffScores.put(score, sigType); // Store the score
-					continue;
+				intersectionScores.get(expID).get(sigType).add(score);
+				continue;
+			}
+			if(scoreType.equals(ScoreType.SINGLE_DIFFERENTIAL)) {
+				@SuppressWarnings("unchecked")
+				DifferentialRegionScore<Gene> score = (DifferentialRegionScore<Gene>) RegionScoreFactory.createDiffScoreFromConfigFileLine(line, 2);
+				diffScores.put(score, sigType); // Store the score
+				continue;
+			}
+			if(scoreType.equals(ScoreType.SINGLE_REGULAR)) {
+				@SuppressWarnings("unchecked")
+				RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 2);
+				scores.put(score, sigType); // Store the score
+				continue;
+			}
+			if(scoreType.equals(ScoreType.UNION_DIFFERENTIAL)) {
+				String expID = s.asString(2);
+				@SuppressWarnings("unchecked")
+				DifferentialRegionScore<Gene> score = (DifferentialRegionScore<Gene>) RegionScoreFactory.createDiffScoreFromConfigFileLine(line, 3);
+				if(!unionDiffScores.containsKey(expID)) {
+					unionDiffScores.put(expID, new HashMap<SignificanceType, Collection<DifferentialRegionScore<Gene>>>());
+					unionDiffScores.get(expID).put(sigType, new ArrayList<DifferentialRegionScore<Gene>>());
 				}
-				if(scoreType.equals(ScoreType.SINGLE_REGULAR)) {
-					@SuppressWarnings("unchecked")
-					RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 2);
-					scores.put(score, sigType); // Store the score
-					continue;
+				unionDiffScores.get(expID).get(sigType).add(score);
+				continue;
+			}
+			if(scoreType.equals(ScoreType.UNION_REGULAR)) {
+				String expID = s.asString(2);
+				@SuppressWarnings("unchecked")
+				RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 3);
+				if(!unionScores.containsKey(expID)) {
+					unionScores.put(expID, new HashMap<SignificanceType, Collection<RegionScore<Gene>>>());
+					unionScores.get(expID).put(sigType, new ArrayList<RegionScore<Gene>>());
 				}
-				if(scoreType.equals(ScoreType.UNION_DIFFERENTIAL)) {
-					String expID = s.asString(2);
-					@SuppressWarnings("unchecked")
-					DifferentialRegionScore<Gene> score = (DifferentialRegionScore<Gene>) RegionScoreFactory.createDiffScoreFromConfigFileLine(line, 3);
-					if(!unionDiffScores.containsKey(expID)) {
-						unionDiffScores.put(expID, new HashMap<SignificanceType, Collection<DifferentialRegionScore<Gene>>>());
-						unionDiffScores.get(expID).put(sigType, new ArrayList<DifferentialRegionScore<Gene>>());
-					}
-					unionDiffScores.get(expID).get(sigType).add(score);
-					continue;
-				}
-				if(scoreType.equals(ScoreType.UNION_REGULAR)) {
-					String expID = s.asString(2);
-					@SuppressWarnings("unchecked")
-					RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 3);
-					if(!unionScores.containsKey(expID)) {
-						unionScores.put(expID, new HashMap<SignificanceType, Collection<RegionScore<Gene>>>());
-						unionScores.get(expID).put(sigType, new ArrayList<RegionScore<Gene>>());
-					}
-					unionScores.get(expID).get(sigType).add(score);
-					continue;
-				}
-			} catch(Exception e) {
-				crashWithHelpMessage(line);
+				unionScores.get(expID).get(sigType).add(score);
+				continue;
 			}
 		}
 		b.close();
@@ -172,10 +168,15 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 			}
 		}
 		
-
+		if(scores.isEmpty() && diffScores.isEmpty()) {
+			System.err.println("\nInvalid config file.");
+			printConfigFileDescription();
+			System.exit(-1);
+		}
 		
 	}
 	
+	@SuppressWarnings("unused")
 	private static void crashWithHelpMessage(String line) {
 		logger.error("");
 		logger.error("Invalid config file line:");
@@ -186,18 +187,25 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	}
 	
 	private static void printConfigFileDescription() {
-		logger.info("\nline format:");
-		logger.info("score_type\tscore_group_id_for_intersection_or_union[omit_if_not_combined]\tsignificance_type\tscore_name\tscore_info\n");
-		logger.info("Score types:");
-		logger.info(ScoreType.commaSeparatedList() + "\n");
-		logger.info("Significance types:");
-		logger.info(SignificanceType.commaSeparatedList() + "\n");
-		logger.info("Score info formats:");
-		logger.info(new GenericRegionScore().getConfigFileLineFormat());
-		logger.info(new GenericDifferentialRegionScore().getConfigFileLineFormat());
-		logger.info(new DifferentialExpressionCuffdiff().getConfigFileLineFormat());
-		logger.info(new TranslationalEfficiency().getConfigFileLineFormat());
-		logger.info(new DifferentialTranslationalEfficiency().getConfigFileLineFormat());
+		System.err.println("------------------------------------------------------------------------------------------------------\n");
+		System.err.println("Config file line format:\nscore_type\tsignificance_type\tscore_group_id_for_intersection_or_union[omit_if_not_combined]\tscore_name\tscore_info\n");
+		System.err.println("Score types:\n" + ScoreType.commaSeparatedList());
+		System.err.println("\nSignificance types:");
+		System.err.println(SignificanceType.commaSeparatedList());
+		System.err.println("\nScore names:");
+		String names = RegionScoreFactory.GENERIC_REGION_SCORE;
+		names += ", " + RegionScoreFactory.GENERIC_DIFF_REGION_SCORE;
+		names += ", " + RegionScoreFactory.TRANSLATIONAL_EFFICIENCY;
+		names += ", " + RegionScoreFactory.DIFF_TRANSLATIONAL_EFFICIENCY;
+		names += ", " + RegionScoreFactory.DIFF_EXP_CUFFDIFF;
+		System.err.println(names);
+		System.err.println("\nScore info formats:");
+		System.err.println(new GenericRegionScore().getConfigFileLineFormat());
+		System.err.println(new GenericDifferentialRegionScore().getConfigFileLineFormat());
+		System.err.println(new DifferentialExpressionCuffdiff().getConfigFileLineFormat());
+		System.err.println(new TranslationalEfficiency().getConfigFileLineFormat());
+		System.err.println(new DifferentialTranslationalEfficiency().getConfigFileLineFormat());
+		System.err.println("\n------------------------------------------------------------------------------------------------------");
 	}
 	
 	@Override
@@ -209,13 +217,18 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		}
 		for(DifferentialRegionScore<Gene> diffScore : diffScores.keySet()) {
 			SignificanceType sigType = diffScores.get(diffScore);
-			if(!diffScore.isSignificant(region)) {
-				return false;
-			}
-			if(sigType.equals(SignificanceType.SAMPLE_1_UP) && diffScore.experiment2IsUp(region)) {
-				return false;
-			}
-			if(sigType.equals(SignificanceType.SAMPLE_2_UP) && !diffScore.experiment2IsUp(region)) {
+			try {
+				if(!diffScore.isSignificant(region)) {
+					return false;
+				}
+				if(sigType.equals(SignificanceType.SAMPLE_1_UP) && diffScore.experiment2IsUp(region)) {
+					return false;
+				}
+				if(sigType.equals(SignificanceType.SAMPLE_2_UP) && !diffScore.experiment2IsUp(region)) {
+					return false;
+				}
+			} catch(Exception e) {
+				logger.warn("Score " + diffScore.getClass().getSimpleName() + " can't assess whether gene " + region.getName() + " is candidate. Returning false.");
 				return false;
 			}
 		}
@@ -226,15 +239,47 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	public String getOutputTableLine(Gene region) {
 		String rtrn = region.getName() + "\t";
 		rtrn += region.toUCSC() + "\t";
-		rtrn += isCandidate(region) + "\t";
+		try {
+			rtrn += isCandidate(region) + "\t";
+		} catch(NullPointerException e) {
+			logger.warn("Can't assess whether gene " + region.getName() + " is candidate. Skipping.");
+			return null;
+		}
 		for(RegionScore<Gene> score : scores.keySet()) {
-			rtrn += score.getScore(region) + "\t";
-			rtrn += score.isSignificant(region) + "\t";
+			try {
+				rtrn += score.getScore(region) + "\t";
+			} catch(NullPointerException e) {
+				logger.warn("Score " + score.getClass().getSimpleName() + " does not have record for gene " + region.getName() + ". Skipping.");
+				return null;
+			}
+			try {
+				rtrn += score.isSignificant(region) + "\t";
+			} catch(NullPointerException e) {
+				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess significance for gene " + region.getName() + ". Skipping.");
+				return null;
+			}
 		}
 		for(DifferentialRegionScore<Gene> score : diffScores.keySet()) {
-			rtrn += score.getScore(region) + "\t";
-			rtrn += score.experiment2IsUp(region) + "\t";
-			rtrn += score.isSignificant(region) + "\t";
+			try {
+				rtrn += score.getScore(region) + "\t";
+			} catch(NullPointerException e) {
+				logger.warn("Score " + score.getClass().getSimpleName() + " does not have record for gene " + region.getName() + ". Skipping.");
+				return null;
+			} catch(UnsupportedOperationException e) {
+				rtrn += "-\t";
+			}
+			try {
+				rtrn += score.experiment2IsUp(region) + "\t";
+			} catch(Exception e) {
+				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess which sample is up for gene " + region.getName() + ". Skipping.");
+				return null;
+			}
+			try {
+				rtrn += score.isSignificant(region) + "\t";
+			} catch(NullPointerException e) {
+				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess significance for gene " + region.getName() + ". Skipping.");
+				return null;
+			}
 		}
 		rtrn += "\n";
 		return rtrn;
@@ -273,7 +318,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		String outTable = outFilePrefix + ".out";
 		String outBed = outFilePrefix + ".candidates.bed";
 		logger.info("");
-		logger.info("Writing candidate uORFs to table " + outTable + " and bed file " + outBed + "...");
+		logger.info("Writing candidate genes to table " + outTable + " and bed file " + outBed + "...");
 		FileWriter wt = new FileWriter(outTable);
 		FileWriter wb = new FileWriter(outBed);
 		wt.write(getOutputTableHeader() + "\n");
@@ -286,6 +331,9 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 				cl.advance();
 				Gene gene = iter.next();
 				String line = getOutputTableLine(gene);
+				if(line == null) {
+					continue;
+				}
 				wt.write(line);
 				//wt.flush();
 				if(isCandidate(gene)) wb.write(getOutputBedLine(gene));
@@ -302,24 +350,28 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	public static void main(String[] args) throws IOException {
 		
 		CommandLineParser p = new CommandLineParser();
+		p.setProgramDescription("Combined score candidate gene finder");
 		p.addStringArg("-cf", "Config file", true);
 		p.addStringArg("-gb", "Bed file of genes to test for candidates", true);
 		p.addStringArg("-cs", "Chromosome size file", true);
 		p.addStringArg("-o", "Output file prefix", true);
 		
+		String configFile = null;
+		String geneBed = null;
+		String chrSizes = null;
+		String outFile = null;
+
 		try {
 			p.parse(args);
+			configFile = p.getStringArg("-cf");
+			geneBed = p.getStringArg("-gb");
+			chrSizes = p.getStringArg("-cs");
+			outFile = p.getStringArg("-o");
 		} catch(Exception e) {
 			System.out.println();
-			p.printHelpMessage();
-			System.out.println();
 			printConfigFileDescription();
+			System.exit(-1);
 		}
-		
-		String configFile = p.getStringArg("-cf");
-		String geneBed = p.getStringArg("-gb");
-		String chrSizes = p.getStringArg("-cs");
-		String outFile = p.getStringArg("-o");
 		
 		CandidateFinderCombinedScores cf = new CandidateFinderCombinedScores(configFile);
 		

@@ -76,7 +76,7 @@ public enum ScoreType {
 	public static String commaSeparatedList() {
 		String rtrn = ScoreType.values()[0].toString();
 		for(int i = 1; i < ScoreType.values().length; i++) {
-			rtrn += "," + ScoreType.values()[i].toString();
+			rtrn += ", " + ScoreType.values()[i].toString();
 		}
 		return rtrn;
 	}

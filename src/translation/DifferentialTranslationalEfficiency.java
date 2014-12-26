@@ -8,6 +8,7 @@ import guttmanlab.core.annotation.Gene;
 import guttmanlab.core.util.StringParser;
 import score.AbstractRegionScore;
 import score.DifferentialRegionScore;
+import score.GenericRegionScore;
 import score.RegionScore;
 
 /**
@@ -142,7 +143,7 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 
 	@Override
 	public String getExperimentID() {
-		throw new UnsupportedOperationException();
+		return "diff_TE_" + getExperimentID1() + "_" + getExperimentID2();
 	}
 
 	@Override
@@ -177,7 +178,7 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 	
 	@Override
 	public String getConfigFileLineFormat() {
-		String rtrn = "ribosomeBam1\tribosomeBam2\tcontrolBam1\tcontrolBam2\tgeneBed\tchrSizes\t";
+		String rtrn = DifferentialTranslationalEfficiency.class.getSimpleName() + ":\tribosomeBam1\tribosomeBam2\tcontrolBam1\tcontrolBam2\tgeneBed\tchrSizes\t";
 		rtrn += "ribosomeGenomeTotal1\tribosomeGenomeTotal2\tcontrolGenomeTotal1\tcontrolGenomeTotal2\t";
 		rtrn += "ribosomeExonTotal1\tribosomeExonTotal2\tcontrolExonTotal1\tcontrolExonTotal2\tisStrandSpecific\tcutoffLog2ratio";
 		return rtrn;
@@ -189,6 +190,7 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 		StringParser s = new StringParser();
 		s.parse(line);
 		if(s.getFieldCount() != 16) {
+			logger.error("Field count is not 16: " + line);
 			crashWithHelpMessage(line, logger);
 		}
 		try {
@@ -209,6 +211,8 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 			boolean ss = s.asBoolean(14);
 			double cutoff = s.asDouble(15);
 		} catch(Exception e) {
+			logger.error("Caught exception:");
+			e.printStackTrace();
 			crashWithHelpMessage(line, logger);
 		}
 	}

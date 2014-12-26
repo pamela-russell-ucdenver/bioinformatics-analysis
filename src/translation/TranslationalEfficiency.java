@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import score.AbstractRegionScore;
+import score.GenericRegionScore;
 import score.RegionScore;
 import bam.BamCountRegionOverlappers;
 import broad.core.math.ScanStatistics;
@@ -506,7 +507,7 @@ public class TranslationalEfficiency extends AbstractRegionScore<Gene> {
 
 	@Override
 	public String getConfigFileLineFormat() {
-		return "ribosomeBam\tcontrolBam\tgeneAnnotationBed\tchrSizes\tribosomeGenomeTotal\tcontrolGenomeTotal\tribosomeExonTotal\tcontrolExonTotal\tstrandSpecific\texperimentId";
+		return TranslationalEfficiency.class.getSimpleName() + ":\tribosomeBam\tcontrolBam\tgeneAnnotationBed\tchrSizes\tribosomeGenomeTotal\tcontrolGenomeTotal\tribosomeExonTotal\tcontrolExonTotal\tstrandSpecific\texperimentId";
 	}
 
 	@SuppressWarnings("unused")
@@ -515,6 +516,7 @@ public class TranslationalEfficiency extends AbstractRegionScore<Gene> {
 		StringParser s = new StringParser();
 		s.parse(line);
 		if(s.getFieldCount() != 9) {
+			logger.error("Field count is not 9: " + line);
 			crashWithHelpMessage(line, logger);
 		}
 		try {
@@ -528,6 +530,8 @@ public class TranslationalEfficiency extends AbstractRegionScore<Gene> {
 			double cet = s.asDouble(7);
 			boolean ss = s.asBoolean(8);
 		} catch(Exception e) {
+			logger.error("Caught exception:");
+			e.printStackTrace();
 			crashWithHelpMessage(line, logger);
 		}
 	}

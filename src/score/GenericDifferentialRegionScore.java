@@ -32,14 +32,15 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 	 * @param scoreCutoff Significance cutoff for differential score
 	 * @param cutoffIsMax True if the cutoff is a maximum, false otherwise
 	 * @param experimentID Experiment ID
+	 * @param geneNameColNum Zero based column number containing the gene name
 	 * @param differentialScoreColNum Zero based column number containing the differential score (e.g. change P value) (gene name must be in column 0)
 	 * @param exp1scoreColNum Zero based column number containing the score for experiment 1
 	 * @param exp2scoreColNum Zero based column number containing the score for experiment 2
 	 * @throws IOException
 	 */
-	public GenericDifferentialRegionScore(String scoreTable, double scoreCutoff, boolean cutoffIsMax, String experimentID, int differentialScoreColNum, String exp1ID, String exp2ID, int exp1scoreColNum, int exp2scoreColNum) throws IOException {
-		super(scoreTable, differentialScoreColNum, scoreCutoff, cutoffIsMax, experimentID);
-		initializeComparisons(scoreTable, exp1scoreColNum, exp2scoreColNum);
+	public GenericDifferentialRegionScore(String scoreTable, double scoreCutoff, boolean cutoffIsMax, String experimentID, int geneNameColNum, int differentialScoreColNum, String exp1ID, String exp2ID, int exp1scoreColNum, int exp2scoreColNum) throws IOException {
+		super(scoreTable, geneNameColNum, differentialScoreColNum, scoreCutoff, cutoffIsMax, experimentID);
+		initializeComparisons(scoreTable, geneNameColNum, exp1scoreColNum, exp2scoreColNum);
 		experiment1ID = exp1ID;
 		experiment2ID = exp2ID;
 	}
@@ -47,26 +48,33 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 	/**
 	 * Store the comparisons between the two samples, i.e. which sample is up
 	 * @param tableFile Score table
+	 * @param geneNameColNum Zero based column number containing the gene name
 	 * @param exp1scoreColNum Column number containing score for experiment 1
 	 * @param exp2scoreColNum Column number containing score for experiment 2
 	 * @throws IOException
 	 */
-	protected void initializeComparisons(String tableFile, int exp1scoreColNum, int exp2scoreColNum) throws IOException {
+	protected void initializeComparisons(String tableFile, int geneNameColNum, int exp1scoreColNum, int exp2scoreColNum) throws IOException {
 		experiment2IsUp = new HashMap<String, Boolean>();
 		BufferedReader b = new BufferedReader(new FileReader(tableFile));
 		StringParser s = new StringParser();
+		boolean firstLine = true; // Catch exceptions if there is a header line
 		while(b.ready()) {
 			String line = b.readLine();
 			s.parse(line);
 			try {
-				String name = s.asString(0);
+				String name = s.asString(geneNameColNum);
 				if(experiment2IsUp.containsKey(name)) {
-					throw new IllegalStateException("Comparison map already contains key " + name + ".");
+					logger.warn("SKIPPING LINE: Comparison map already contains key " + name + ".");
+					continue;
 				}
 				double score1 = s.asDouble(exp1scoreColNum);
 				double score2 = s.asDouble(exp2scoreColNum);
 				experiment2IsUp.put(name, Boolean.valueOf(score2 > score1));
+				firstLine = false;
 			} catch(Exception e) {
+				if(firstLine) {
+					continue;
+				}
 				b.close();
 				logger.error("Exception on line: " + line);
 				throw e;
@@ -104,13 +112,14 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 		double cutoff = s.asDouble(1);
 		boolean max = s.asBoolean(2);
 		String id = s.asString(3);
-		int dc = s.asInt(4);
-		String id1 = s.asString(5);
-		String id2 = s.asString(6);
-		int c1 = s.asInt(7);
-		int c2 = s.asInt(8);
+		int geneCol = s.asInt(4);
+		int dc = s.asInt(5);
+		String id1 = s.asString(6);
+		String id2 = s.asString(7);
+		int c1 = s.asInt(8);
+		int c2 = s.asInt(9);
 		try {
-			return new GenericDifferentialRegionScore(st, cutoff, max, id, dc, id1, id2, c1, c2);
+			return new GenericDifferentialRegionScore(st, cutoff, max, id, geneCol, dc, id1, id2, c1, c2);
 		} catch (IOException e) {
 			logger.error("Caught exception:");
 			e.printStackTrace();
@@ -120,7 +129,7 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 	}
 	
 	public String getConfigFileLineFormat() {
-		return "scoreTable\tscoreCutoff\tcutoffIsMax\texperimentIDtifferentialScoreColNum\texp1ID\texp2ID\texp1scoreColNum\texp2scoreColNum";
+		return GenericDifferentialRegionScore.class.getSimpleName() + ":\tscoreTable\tscoreCutoff\tcutoffIsMax\texperimentID\tgeneNameColNum\tdifferentialScoreColNum\texp1ID\texp2ID\texp1scoreColNum\texp2scoreColNum";
 	}
 	
 	
@@ -129,7 +138,8 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 	public void validateConfigFileLine(String line) {
 		StringParser s = new StringParser();
 		s.parse(line);
-		if(s.getFieldCount() != 9) {
+		if(s.getFieldCount() != 10) {
+			logger.error("Field count is not 10: " + line);
 			crashWithHelpMessage(line, logger);
 		}
 		try {
@@ -137,12 +147,15 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 			double cutoff = s.asDouble(1);
 			boolean max = s.asBoolean(2);
 			String id = s.asString(3);
-			int dc = s.asInt(4);
-			String id1 = s.asString(5);
-			String id2 = s.asString(6);
-			int c1 = s.asInt(7);
-			int c2 = s.asInt(8);
+			int geneCol = s.asInt(4);
+			int dc = s.asInt(5);
+			String id1 = s.asString(6);
+			String id2 = s.asString(7);
+			int c1 = s.asInt(8);
+			int c2 = s.asInt(9);
 		} catch(Exception e) {
+			logger.error("Caught exception:");
+			e.printStackTrace();
 			crashWithHelpMessage(line, logger);
 		}
 	}

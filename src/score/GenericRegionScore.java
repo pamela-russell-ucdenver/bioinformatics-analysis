@@ -29,37 +29,44 @@ public class GenericRegionScore extends AbstractRegionScore<Gene> {
 	
 	/**
 	 * @param scoreTable Score table where each line has gene name in column 0 and score in specified column (zero based)
+	 * @param geneNameColNum Zero based column number containing the gene name
 	 * @param scoreColNum Zero based column number containing the score (gene name must be in column 0)
 	 * @param scoreCutoff Score significance cutoff
 	 * @param cutoffIsMax True if the cutoff is a maximum, false otherwise
 	 * @param experimentID Experiment ID
 	 * @throws IOException
 	 */
-	public GenericRegionScore(String scoreTable, int scoreColNum, double scoreCutoff, boolean cutoffIsMax, String experimentID) throws IOException {
+	public GenericRegionScore(String scoreTable, int geneNameColNum, int scoreColNum, double scoreCutoff, boolean cutoffIsMax, String experimentID) throws IOException {
 		logger.info("");
 		logger.info("Instantiating generic region score from column " + scoreColNum + " of table " + scoreTable + ". Cutoff is " + scoreCutoff + ".");
 		cutoff = scoreCutoff;
 		scoreCutoffIsMax = cutoffIsMax;
 		expID = experimentID;
-		initializeScores(scoreTable, scoreColNum);
+		initializeScores(scoreTable, geneNameColNum, scoreColNum);
 		logger.info("");
 		logger.info("Done instantiating generic region score.");
 	}
 	
-	protected void initializeScores(String tableFile, int scoreColNum) throws IOException {
+	protected void initializeScores(String tableFile, int geneNameColNum, int scoreColNum) throws IOException {
 		scoresByGeneName = new HashMap<String, Double>();
 		BufferedReader b = new BufferedReader(new FileReader(tableFile));
 		StringParser s = new StringParser();
+		boolean firstLine = true; // Catch exceptions if there is a header line
 		while(b.ready()) {
 			String line = b.readLine();
 			s.parse(line);
 			try {
-				String name = s.asString(0);
+				String name = s.asString(geneNameColNum);
 				if(scoresByGeneName.containsKey(name)) {
-					throw new IllegalStateException("Score map already contains key " + name + ".");
+					logger.warn("SKIPPING LINE: Score map already contains key " + name + ".");
+					continue;
 				}
 				scoresByGeneName.put(name, Double.valueOf(s.asDouble(scoreColNum)));
+				firstLine = false;
 			} catch(Exception e) {
+				if(firstLine) {
+					continue;
+				}
 				b.close();
 				logger.error("Exception on line: " + line);
 				throw e;
@@ -94,12 +101,13 @@ public class GenericRegionScore extends AbstractRegionScore<Gene> {
 		validateConfigFileLine(line);
 		StringParser s = new StringParser();
 		String table = s.asString(0);
-		int col = s.asInt(1);
-		double cutoff = s.asDouble(2);
-		boolean max = s.asBoolean(3);
-		String id = s.asString(4);
+		int geneCol = s.asInt(1);
+		int col = s.asInt(2);
+		double cutoff = s.asDouble(3);
+		boolean max = s.asBoolean(4);
+		String id = s.asString(5);
 		try {
-			return new GenericRegionScore(table, col, cutoff, max, id);
+			return new GenericRegionScore(table, geneCol, col, cutoff, max, id);
 		} catch (IOException e) {
 			logger.error("Caught exception:");
 			e.printStackTrace();
@@ -110,7 +118,7 @@ public class GenericRegionScore extends AbstractRegionScore<Gene> {
 
 	@Override
 	public String getConfigFileLineFormat() {
-		return "score_table[string]\tscore_col_num[int]\tscore_cutoff[double]\tcutoff_is_max[boolean]\texperiment_ID[string]";
+		return GenericRegionScore.class.getSimpleName() + ":\tscore_table\tgene_name_col_num\tscore_col_num\tscore_cutoff\tcutoff_is_max\texperiment_ID";
 	}
 	
 	@SuppressWarnings("unused")
@@ -118,16 +126,20 @@ public class GenericRegionScore extends AbstractRegionScore<Gene> {
 	public void validateConfigFileLine(String line) {
 		StringParser s = new StringParser();
 		s.parse(line);
-		if(s.getFieldCount() != 5) {
+		if(s.getFieldCount() != 6) {
+			logger.error("Field count is not 6: " + line);
 			crashWithHelpMessage(line, logger);
 		}
 		try {
 			String table = s.asString(0);
-			int col = s.asInt(1);
-			double cutoff = s.asDouble(2);
-			boolean max = s.asBoolean(3);
-			String id = s.asString(4);
+			int geneCol = s.asInt(1);
+			int col = s.asInt(2);
+			double cutoff = s.asDouble(3);
+			boolean max = s.asBoolean(4);
+			String id = s.asString(5);
 		} catch(Exception e) {
+			logger.error("Caught exception:");
+			e.printStackTrace();
 			crashWithHelpMessage(line, logger);
 		}
 	}
