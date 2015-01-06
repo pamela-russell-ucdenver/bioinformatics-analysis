@@ -37,7 +37,7 @@ public class DifferentialRegionScoreUnion implements DifferentialRegionScore<Gen
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
+	public boolean isSignificant(double score, SignificanceType significanceType) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -45,9 +45,9 @@ public class DifferentialRegionScoreUnion implements DifferentialRegionScore<Gen
 	 * True if at least one score is significant
 	 */
 	@Override
-	public boolean isSignificant(Gene region) {
+	public boolean isSignificant(Gene region, SignificanceType significanceType) {
 		for(DifferentialRegionScore<Gene> score : scores) {
-			if(score.isSignificant(region)) {
+			if(score.isSignificant(region, significanceType)) {
 				return true;
 			}
 		}

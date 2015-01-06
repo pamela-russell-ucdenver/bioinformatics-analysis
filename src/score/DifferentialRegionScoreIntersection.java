@@ -36,7 +36,7 @@ public class DifferentialRegionScoreIntersection implements DifferentialRegionSc
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
+	public boolean isSignificant(double score, SignificanceType significanceType) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -44,10 +44,10 @@ public class DifferentialRegionScoreIntersection implements DifferentialRegionSc
 	 * True if all scores are significant in the same direction
 	 */
 	@Override
-	public boolean isSignificant(Gene region) {
+	public boolean isSignificant(Gene region, SignificanceType significanceType) {
 		boolean firstExpUp2 = scores.iterator().next().experiment2IsUp(region);
 		for(DifferentialRegionScore<Gene> score : scores) {
-			if(!score.isSignificant(region)) {
+			if(!score.isSignificant(region, significanceType)) {
 				return false;
 			}
 			if(score.experiment2IsUp(region) != firstExpUp2) {

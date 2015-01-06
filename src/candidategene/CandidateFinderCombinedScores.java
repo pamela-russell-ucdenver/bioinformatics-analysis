@@ -43,7 +43,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	/**
 	 * Regular scores, not comparisons of two samples
 	 */
-	private Map<RegionScore<Gene>, SignificanceType> scores;
+	private Map<RegionScore<Gene>, SignificanceType> singleScores;
 	
 	/**
 	 * Scores that are comparisons of two samples
@@ -66,7 +66,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	 * @throws IOException
 	 */
 	private void initializeScores(String configFile) throws IOException {
-		scores = new HashMap<RegionScore<Gene>, SignificanceType>();
+		singleScores = new HashMap<RegionScore<Gene>, SignificanceType>();
 		diffScores = new HashMap<DifferentialRegionScore<Gene>, SignificanceType>();
 		BufferedReader b = new BufferedReader(new FileReader(configFile));
 		// Map to keep track of scores that will comprise an intersection of multiple scores
@@ -114,7 +114,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 			if(scoreType.equals(ScoreType.SINGLE_REGULAR)) {
 				@SuppressWarnings("unchecked")
 				RegionScore<Gene> score = (RegionScore<Gene>) RegionScoreFactory.createScoreFromConfigFileLine(line, 2);
-				scores.put(score, sigType); // Store the score
+				singleScores.put(score, sigType); // Store the score
 				continue;
 			}
 			if(scoreType.equals(ScoreType.UNION_DIFFERENTIAL)) {
@@ -146,13 +146,13 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		
 		for(String id : intersectionScores.keySet()) {
 			for(SignificanceType sigType : intersectionScores.get(id).keySet()) {
-				scores.put(new RegionScoreIntersection(intersectionScores.get(id).get(sigType), id), sigType);
+				singleScores.put(new RegionScoreIntersection(intersectionScores.get(id).get(sigType), id), sigType);
 			}
 		}
 		
 		for(String id : unionScores.keySet()) {
 			for(SignificanceType sigType : unionScores.get(id).keySet()) {
-				scores.put(new RegionScoreIntersection(unionScores.get(id).get(sigType), id), sigType);
+				singleScores.put(new RegionScoreIntersection(unionScores.get(id).get(sigType), id), sigType);
 			}
 		}
 		
@@ -168,7 +168,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 			}
 		}
 		
-		if(scores.isEmpty() && diffScores.isEmpty()) {
+		if(singleScores.isEmpty() && diffScores.isEmpty()) {
 			System.err.println("\nInvalid config file.");
 			printConfigFileDescription();
 			System.exit(-1);
@@ -210,15 +210,16 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	
 	@Override
 	public boolean isCandidate(Gene region) {
-		for(RegionScore<Gene> score : scores.keySet()) {
-			if(!score.isSignificant(region)) {
+		for(RegionScore<Gene> score : singleScores.keySet()) {
+			SignificanceType sigType = singleScores.get(score);
+			if(!score.isSignificant(region, sigType)) {
 				return false;
 			}
 		}
 		for(DifferentialRegionScore<Gene> diffScore : diffScores.keySet()) {
 			SignificanceType sigType = diffScores.get(diffScore);
 			try {
-				if(!diffScore.isSignificant(region)) {
+				if(!diffScore.isSignificant(region, sigType)) {
 					return false;
 				}
 				if(sigType.equals(SignificanceType.SAMPLE_1_UP) && diffScore.experiment2IsUp(region)) {
@@ -245,7 +246,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 			logger.warn("Can't assess whether gene " + region.getName() + " is candidate. Skipping.");
 			return null;
 		}
-		for(RegionScore<Gene> score : scores.keySet()) {
+		for(RegionScore<Gene> score : singleScores.keySet()) {
 			try {
 				rtrn += score.getScore(region) + "\t";
 			} catch(NullPointerException e) {
@@ -253,7 +254,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 				return null;
 			}
 			try {
-				rtrn += score.isSignificant(region) + "\t";
+				rtrn += score.isSignificant(region, singleScores.get(score)) + "\t";
 			} catch(NullPointerException e) {
 				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess significance for gene " + region.getName() + ". Skipping.");
 				return null;
@@ -275,7 +276,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 				return null;
 			}
 			try {
-				rtrn += score.isSignificant(region) + "\t";
+				rtrn += score.isSignificant(region, diffScores.get(score)) + "\t";
 			} catch(NullPointerException e) {
 				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess significance for gene " + region.getName() + ". Skipping.");
 				return null;
@@ -295,7 +296,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		String rtrn = "gene_ID\t";
 		rtrn += "coordinates\t";
 		rtrn += "is_candidate\t";
-		for(RegionScore<Gene> score : scores.keySet()) {
+		for(RegionScore<Gene> score : singleScores.keySet()) {
 			rtrn += "score_" + score.getExperimentID() + "\t";
 			rtrn += "is_significant_" + score.getExperimentID() + "\t";
 		}

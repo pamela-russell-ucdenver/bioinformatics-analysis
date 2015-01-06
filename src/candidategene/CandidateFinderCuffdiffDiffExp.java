@@ -7,6 +7,7 @@ import net.sf.samtools.util.CloseableIterator;
 
 import org.apache.log4j.Logger;
 
+import score.SignificanceType;
 import expression.CuffdiffRecord;
 import expression.DifferentialExpressionCuffdiff;
 import guttmanlab.core.annotation.Gene;
@@ -89,7 +90,7 @@ public class CandidateFinderCuffdiffDiffExp implements CandidateFinder<Gene> {
 	
 	@Override
 	public boolean isCandidate(Gene region) {
-		return diffexp.isSignificant(diffexp.getScore(region));
+		return diffexp.isSignificant(diffexp.getScore(region), SignificanceType.EITHER_SAMPLE_UP);
 	}
 
 	@Override

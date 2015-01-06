@@ -86,9 +86,25 @@ public class GenericRegionScore extends AbstractRegionScore<Gene> {
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
-		if(scoreCutoffIsMax) return score <= cutoff;
-		return score >= cutoff;
+	public boolean isSignificant(double score, SignificanceType significanceType) {
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			throw new IllegalArgumentException("Can't use two-sample significance type for single-sample generic region score");
+		case SAMPLE_1_UP:
+			throw new IllegalArgumentException("Can't use two-sample significance type for single-sample generic region score");
+		case SAMPLE_2_UP:
+			throw new IllegalArgumentException("Can't use two-sample significance type for single-sample generic region score");
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			if(scoreCutoffIsMax) return score > cutoff;
+			return score <= cutoff;
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			if(scoreCutoffIsMax) return score <= cutoff;
+			return score >= cutoff;
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use two-sample significance type for single-sample generic region score");
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
 	}
 
 	@Override

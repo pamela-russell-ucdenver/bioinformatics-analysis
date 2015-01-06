@@ -6,8 +6,8 @@ import guttmanlab.core.annotation.Annotation;
 
 public abstract class AbstractRegionScore<T extends Annotation> implements RegionScore<T> {
 	
-	public boolean isSignificant(T region) {
-		return isSignificant(getScore(region));
+	public boolean isSignificant(T region, SignificanceType significanceType) {
+		return isSignificant(getScore(region), significanceType);
 	}
 	
 	/**

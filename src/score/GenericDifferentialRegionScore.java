@@ -104,6 +104,47 @@ public class GenericDifferentialRegionScore extends GenericRegionScore implement
 		return rtrn.booleanValue();
 	}
 	
+	@Override
+	public boolean isSignificant(double score, SignificanceType significanceType) {
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			return super.isSignificant(score, SignificanceType.twoSampleToSingleSampleAnalog(significanceType));
+		case SAMPLE_1_UP:
+			throw new IllegalArgumentException("Can't pass " + SignificanceType.SAMPLE_1_UP.toString() + " as significance type to method that just takes score");
+		case SAMPLE_2_UP:
+			throw new IllegalArgumentException("Can't pass " + SignificanceType.SAMPLE_2_UP.toString() + " as significance type to method that just takes score");
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			return !super.isSignificant(score, SignificanceType.twoSampleToSingleSampleAnalog(significanceType));
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
+	}
+	
+	@Override
+	public boolean isSignificant(Gene region, SignificanceType significanceType) {
+		double score = getScore(region);
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			return super.isSignificant(score, SignificanceType.twoSampleToSingleSampleAnalog(significanceType));
+		case SAMPLE_1_UP:
+			return super.isSignificant(score, SignificanceType.twoSampleToSingleSampleAnalog(significanceType)) && !experiment2IsUp(region);
+		case SAMPLE_2_UP:
+			return super.isSignificant(score, SignificanceType.twoSampleToSingleSampleAnalog(significanceType)) && experiment2IsUp(region);
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			return !super.isSignificant(score, SignificanceType.twoSampleToSingleSampleAnalog(significanceType));
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
+	}
+	
 	public RegionScore<Gene> createFromConfigFileLine(String line) {
 		validateConfigFileLine(line);
 		StringParser s = new StringParser();

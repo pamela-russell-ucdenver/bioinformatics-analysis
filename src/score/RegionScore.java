@@ -20,16 +20,18 @@ public interface RegionScore<T extends Annotation> {
 	/**
 	 * Test whether a score is significant
 	 * @param score The score
+	 * @param significanceType Significance type
 	 * @return True iff the score is significant
 	 */
-	public boolean isSignificant(double score);
+	public boolean isSignificant(double score, SignificanceType significanceType);
 	
 	/**
 	 * Test whether the score for a region is significant
 	 * @param region The region
+	 * @param significanceType Significance type
 	 * @return True iff the region's score is significant
 	 */
-	public boolean isSignificant(T region);
+	public boolean isSignificant(T region, SignificanceType significanceType);
 	
 	/**
 	 * Get the name of the experiment

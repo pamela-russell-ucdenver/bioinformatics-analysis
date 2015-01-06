@@ -8,6 +8,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import net.sf.samtools.util.CloseableIterator;
+import score.SignificanceType;
 import translation.DifferentialTranslationalEfficiency;
 import translation.ORFFinder;
 import translation.TranslationalEfficiency;
@@ -82,7 +83,7 @@ public class CandidateFinderUORFRepression implements CandidateFinder<Gene> {
 	public AnnotationCollection<UpstreamORF> getCandidateUORFs(Gene gene) {
 		FeatureCollection<UpstreamORF> rtrn = new FeatureCollection<UpstreamORF>(orfFinder.getCoordSpace());
 		double geneDiffTE = diffTE.getScore(gene);
-		if(!diffTE.isSignificant(geneDiffTE)) {
+		if(!diffTE.isSignificant(geneDiffTE, SignificanceType.EITHER_SAMPLE_UP)) {
 			// Gene TE does not change, therefore there can be no candidate uORFs
 			return rtrn;
 		}
@@ -93,7 +94,7 @@ public class CandidateFinderUORFRepression implements CandidateFinder<Gene> {
 			UpstreamORF uorf = iter.next();
 			double uorfDiffTE = diffTE.getScore(uorf);
 			boolean uorfIsUp = uorfDiffTE > 0;
-			if(diffTE.isSignificant(uorfDiffTE)) {
+			if(diffTE.isSignificant(uorfDiffTE, SignificanceType.EITHER_SAMPLE_UP)) {
 				if((cdsIsUp && !uorfIsUp) || (!cdsIsUp && uorfIsUp)) {
 					logger.debug("Candidate uORF: " + uorf.getCodingRegion().toUCSC());
 					rtrn.addAnnotation(uorf);

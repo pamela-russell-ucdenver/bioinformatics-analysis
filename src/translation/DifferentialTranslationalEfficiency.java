@@ -10,6 +10,7 @@ import score.AbstractRegionScore;
 import score.DifferentialRegionScore;
 import score.GenericRegionScore;
 import score.RegionScore;
+import score.SignificanceType;
 
 /**
  * Differential translational efficiency
@@ -122,10 +123,46 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
-		return Math.abs(score) >= log2ratioCutoff;
+	public boolean isSignificant(double score, SignificanceType significanceType) {
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			return Math.abs(score) >= log2ratioCutoff;
+		case SAMPLE_1_UP:
+			throw new IllegalArgumentException("Can't pass " + SignificanceType.SAMPLE_1_UP.toString() + " as significance type to method that just takes score");
+		case SAMPLE_2_UP:
+			throw new IllegalArgumentException("Can't pass " + SignificanceType.SAMPLE_2_UP.toString() + " as significance type to method that just takes score");
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			return Math.abs(score) < log2ratioCutoff;
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
 	}
 
+	@Override
+	public boolean isSignificant(Gene region, SignificanceType significanceType) {
+		double score = getScore(region);
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			return Math.abs(score) >= log2ratioCutoff;
+		case SAMPLE_1_UP:
+			return Math.abs(score) >= log2ratioCutoff && !experiment2IsUp(region);
+		case SAMPLE_2_UP:
+			return Math.abs(score) >= log2ratioCutoff && experiment2IsUp(region);
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			return Math.abs(score) < log2ratioCutoff;
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
+	}
+	
 	@Override
 	public String getExperimentID1() {
 		return te1.getExperimentID();

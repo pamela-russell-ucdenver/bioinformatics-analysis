@@ -11,6 +11,7 @@ import score.AbstractRegionScore;
 import score.DifferentialRegionScore;
 import score.GenericRegionScore;
 import score.RegionScore;
+import score.SignificanceType;
 
 public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> implements DifferentialRegionScore<Gene> {
 	
@@ -22,7 +23,11 @@ public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> im
 	 * @param cuffdiffOutputIsoformExpDiff Output file isoform_exp.diff from Cuffdiff
 	 * @throws IOException
 	 */
-	public DifferentialExpressionCuffdiff(String cuffdiffOutputIsoformExpDiff) throws IOException {
+	public DifferentialExpressionCuffdiff(String configFileLine) throws IOException {
+		StringParser s = new StringParser();
+		s.parse(configFileLine);
+		String cuffdiffOutputIsoformExpDiff = s.asString(0);
+		QVAL_CUTOFF = s.asDouble(1);
 		logger.info("");
 		logger.info("Instantiating differential expression cuffdiff object with file " + cuffdiffOutputIsoformExpDiff + "...");
 		recordsByID = CuffdiffRecord.loadRecordsById(cuffdiffOutputIsoformExpDiff);
@@ -50,10 +55,46 @@ public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> im
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
-		return score < QVAL_CUTOFF;
+	public boolean isSignificant(double score, SignificanceType significanceType) {
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			return score < QVAL_CUTOFF;
+		case SAMPLE_1_UP:
+			throw new IllegalArgumentException("Can't pass " + SignificanceType.SAMPLE_1_UP.toString() + " as significance type to method that just takes score");
+		case SAMPLE_2_UP:
+			throw new IllegalArgumentException("Can't pass " + SignificanceType.SAMPLE_2_UP.toString() + " as significance type to method that just takes score");
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			return score >= QVAL_CUTOFF;
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
 	}
 	
+	@Override
+	public boolean isSignificant(Gene region, SignificanceType significanceType) {
+		double score = getScore(region);
+		switch(significanceType) {
+		case EITHER_SAMPLE_UP:
+			return score < QVAL_CUTOFF;
+		case SAMPLE_1_UP:
+			return score < QVAL_CUTOFF && !experiment2IsUp(region);
+		case SAMPLE_2_UP:
+			return score < QVAL_CUTOFF && experiment2IsUp(region);
+		case SINGLE_SAMPLE_NOT_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case SINGLE_SAMPLE_SIGNIFICANT:
+			throw new IllegalArgumentException("Can't use single sample significance type for differential expression");
+		case TWO_SAMPLE_NOT_SIGNIFICANT:
+			return score >= QVAL_CUTOFF;
+		default:
+			throw new UnsupportedOperationException("Significance type " + significanceType.toString() + " not implemented.");
+		}
+	}
+
 	@Override
 	public String getExperimentID1() {
 		return recordsByID.values().iterator().next().getSample1();
@@ -90,14 +131,14 @@ public class DifferentialExpressionCuffdiff extends AbstractRegionScore<Gene> im
 
 	@Override
 	public String getConfigFileLineFormat() {
-		return DifferentialExpressionCuffdiff.class.getSimpleName() + ":\tcuffdiff_isoform_exp_diff_file";
+		return DifferentialExpressionCuffdiff.class.getSimpleName() + ":\tcuffdiff_isoform_exp_diff_file\tmax_qval";
 	}
 
 	@Override
 	public void validateConfigFileLine(String line) {
 		StringParser s = new StringParser();
 		s.parse(line);
-		if(s.getFieldCount() != 1) {
+		if(s.getFieldCount() != 2) {
 			throw new IllegalArgumentException("Invalid config file line: " + line + ". Format: " + getConfigFileLineFormat());
 		}
 	}

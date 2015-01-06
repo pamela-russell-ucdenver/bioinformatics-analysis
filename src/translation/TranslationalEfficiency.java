@@ -11,6 +11,7 @@ import org.apache.log4j.Logger;
 import score.AbstractRegionScore;
 import score.GenericRegionScore;
 import score.RegionScore;
+import score.SignificanceType;
 import bam.BamCountRegionOverlappers;
 import broad.core.math.ScanStatistics;
 import net.sf.samtools.util.CloseableIterator;
@@ -472,7 +473,7 @@ public class TranslationalEfficiency extends AbstractRegionScore<Gene> {
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
+	public boolean isSignificant(double score, SignificanceType significanceType) {
 		throw new UnsupportedOperationException();
 	}
 

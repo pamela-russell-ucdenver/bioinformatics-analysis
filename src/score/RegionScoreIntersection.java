@@ -37,7 +37,7 @@ public class RegionScoreIntersection implements RegionScore<Gene> {
 	}
 
 	@Override
-	public boolean isSignificant(double score) {
+	public boolean isSignificant(double score, SignificanceType significanceType) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -47,9 +47,9 @@ public class RegionScoreIntersection implements RegionScore<Gene> {
 	}
 
 	@Override
-	public boolean isSignificant(Gene region) {
+	public boolean isSignificant(Gene region, SignificanceType significanceType) {
 		for(RegionScore<Gene> score : scores) {
-			if(!score.isSignificant(region)) {
+			if(!score.isSignificant(region, significanceType)) {
 				return false;
 			}
 		}
