@@ -39,7 +39,7 @@ public class RegionSetRPK {
 		logger.info("Adding counts for " + numGenes + " genes...");
 		while(iter.hasNext()) {
 			Gene region = iter.next();
-			rtrn += data.numOverlappers(region, false);
+			rtrn += data.numOverlappers(region, true);
 			countLogger.advance();
 		}
 		iter.close();
