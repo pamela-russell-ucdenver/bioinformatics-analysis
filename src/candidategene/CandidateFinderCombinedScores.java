@@ -1,6 +1,7 @@
 package candidategene;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -55,9 +56,21 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 	private CandidateFinderCombinedScores(String configFile) throws IOException {
 		logger.info("");
 		logger.info("Instantiating combined score candidate finder with config file " + configFile + "...");
+		printConfigFile(configFile);
 		initializeScores(configFile);
 		logger.info("");
 		logger.info("Done instantiating combined score candidate finder.");
+	}
+	
+	private static void printConfigFile(String configFile) throws IOException {
+		logger.info("");
+		logger.info("CONFIG FILE:");
+		BufferedReader b = new BufferedReader(new FileReader(configFile));
+		while(b.ready()) {
+			logger.info(b.readLine());
+		}
+		b.close();
+		logger.info("");
 	}
 	
 	/**
@@ -272,12 +285,11 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 			try {
 				rtrn += score.experiment2IsUp(region) + "\t";
 			} catch(Exception e) {
-				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess which sample is up for gene " + region.getName() + ". Skipping.");
-				return null;
+				rtrn += "-\t";
 			}
 			try {
 				rtrn += score.isSignificant(region, diffScores.get(score)) + "\t";
-			} catch(NullPointerException e) {
+			} catch(Exception e) {
 				logger.warn("Score " + score.getClass().getSimpleName() + " can't assess significance for gene " + region.getName() + ". Skipping.");
 				return null;
 			}
@@ -288,7 +300,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 
 	@Override
 	public String getOutputBedLine(Gene region) {
-		return region.toBED();
+		return region.toBED() + "\n";
 	}
 
 	@Override
@@ -298,12 +310,12 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		rtrn += "is_candidate\t";
 		for(RegionScore<Gene> score : singleScores.keySet()) {
 			rtrn += "score_" + score.getExperimentID() + "\t";
-			rtrn += "is_significant_" + score.getExperimentID() + "\t";
+			rtrn += "is_candidate_" + score.getExperimentID() + "\t";
 		}
 		for(DifferentialRegionScore<Gene> score : diffScores.keySet()) {
 			rtrn += "score_" + score.getExperimentID() + "\t";
 			rtrn += "experiment_2_is_up_" + score.getExperimentID() + "\t";
-			rtrn += "is_significant_" + score.getExperimentID() + "\t";
+			rtrn += "is_candidate_" + score.getExperimentID() + "\t";
 		}
 		return rtrn;
 	}
