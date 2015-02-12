@@ -175,7 +175,15 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 
 	@Override
 	public boolean experiment2IsUp(Gene gene) {
-		return te2.getScore(gene) > te1.getScore(gene);
+		double score1 = te1.getScore(gene);
+		if(score1 == Double.NaN) {
+			throw new IllegalArgumentException("Score 1 is NaN");
+		}
+		double score2 = te2.getScore(gene);
+		if(score2 == Double.NaN) {
+			throw new IllegalArgumentException("Score 2 is NaN");
+		}
+		return score2 > score1;
 	}
 
 	@Override
