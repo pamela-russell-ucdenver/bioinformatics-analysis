@@ -19,8 +19,8 @@ import score.SignificanceType;
  */
 public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gene> implements DifferentialRegionScore<Gene> {
 	
-	private TranslationalEfficiency te1;
-	private TranslationalEfficiency te2;
+	private TranslationalEfficiencyFromBam te1;
+	private TranslationalEfficiencyFromBam te2;
 	private double log2ratioCutoff;
 	public static Logger logger = Logger.getLogger(DifferentialTranslationalEfficiency.class.getName());
 	
@@ -31,7 +31,7 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 	 * @param translationalEfficiency2 Translational efficiency object 2
 	 * @param cutoffLog2ratio Cutoff for absolute value of log2 TE ratio
 	 */
-	public DifferentialTranslationalEfficiency(TranslationalEfficiency translationalEfficiency1, TranslationalEfficiency translationalEfficiency2, double cutoffLog2ratio) {
+	public DifferentialTranslationalEfficiency(TranslationalEfficiencyFromBam translationalEfficiency1, TranslationalEfficiencyFromBam translationalEfficiency2, double cutoffLog2ratio) {
 		logger.info("");
 		logger.info("Instantiating differential translational efficiency object...");
 		te1 = translationalEfficiency1;
@@ -63,22 +63,22 @@ public class DifferentialTranslationalEfficiency extends AbstractRegionScore<Gen
 	public static DifferentialTranslationalEfficiency factory(String ribosomeBam1, String ribosomeBam2, String controlBam1, String controlBam2, String geneBed, String chrSizes, 
 			double ribosomeGenomeTotal1, double ribosomeGenomeTotal2, double controlGenomeTotal1, double controlGenomeTotal2, double ribosomeExonTotal1, double ribosomeExonTotal2, 
 			double controlExonTotal1, double controlExonTotal2, boolean isStrandSpecific, double cutoffLog2ratio) throws IOException {
-		TranslationalEfficiency te1 = new TranslationalEfficiency(ribosomeBam1, controlBam1, geneBed, chrSizes, ribosomeGenomeTotal1, controlGenomeTotal1, ribosomeExonTotal1, controlExonTotal1, isStrandSpecific);
-		TranslationalEfficiency te2 = new TranslationalEfficiency(ribosomeBam2, controlBam2, geneBed, chrSizes, ribosomeGenomeTotal2, controlGenomeTotal2, ribosomeExonTotal2, controlExonTotal2, isStrandSpecific);
+		TranslationalEfficiencyFromBam te1 = new TranslationalEfficiencyFromBam(ribosomeBam1, controlBam1, geneBed, chrSizes, ribosomeGenomeTotal1, controlGenomeTotal1, ribosomeExonTotal1, controlExonTotal1, isStrandSpecific);
+		TranslationalEfficiencyFromBam te2 = new TranslationalEfficiencyFromBam(ribosomeBam2, controlBam2, geneBed, chrSizes, ribosomeGenomeTotal2, controlGenomeTotal2, ribosomeExonTotal2, controlExonTotal2, isStrandSpecific);
 		return new DifferentialTranslationalEfficiency(te1, te2, cutoffLog2ratio);
 	}
 	
 	/**
 	 * @return Translational efficiency object for control 1 and sample 1
 	 */
-	public TranslationalEfficiency getTE1() {
+	public TranslationalEfficiencyFromBam getTE1() {
 		return te1;
 	}
 	
 	/**
 	 * @return Translational efficiency object for control 2 and sample 2
 	 */
-	public TranslationalEfficiency getTE2() {
+	public TranslationalEfficiencyFromBam getTE2() {
 		return te2;
 	}
 	

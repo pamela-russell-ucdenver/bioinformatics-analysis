@@ -1,7 +1,7 @@
 package score;
 
 import translation.DifferentialTranslationalEfficiency;
-import translation.TranslationalEfficiency;
+import translation.TranslationalEfficiencyFromBam;
 import expression.DifferentialExpressionCuffdiff;
 import guttmanlab.core.annotation.Annotation;
 import guttmanlab.core.annotation.Gene;
@@ -56,7 +56,7 @@ public class RegionScoreFactory {
 		}
 		
 		if(scoreName.equals(TRANSLATIONAL_EFFICIENCY)) {
-			return new TranslationalEfficiency().createFromConfigFileLine(lineSuffix);
+			return new TranslationalEfficiencyFromBam().createFromConfigFileLine(lineSuffix);
 		}
 		
 		throw new IllegalArgumentException("Score " + scoreName + " not supported.");

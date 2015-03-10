@@ -26,7 +26,7 @@ import score.RegionScoreIntersection;
 import score.ScoreType;
 import score.SignificanceType;
 import translation.DifferentialTranslationalEfficiency;
-import translation.TranslationalEfficiency;
+import translation.TranslationalEfficiencyFromBam;
 import guttmanlab.core.annotation.Gene;
 import guttmanlab.core.annotation.io.BEDFileIO;
 import guttmanlab.core.annotationcollection.FeatureCollection;
@@ -216,7 +216,7 @@ public class CandidateFinderCombinedScores implements CandidateFinder<Gene> {
 		System.err.println(new GenericRegionScore().getConfigFileLineFormat());
 		System.err.println(new GenericDifferentialRegionScore().getConfigFileLineFormat());
 		System.err.println(new DifferentialExpressionCuffdiff().getConfigFileLineFormat());
-		System.err.println(new TranslationalEfficiency().getConfigFileLineFormat());
+		System.err.println(new TranslationalEfficiencyFromBam().getConfigFileLineFormat());
 		System.err.println(new DifferentialTranslationalEfficiency().getConfigFileLineFormat());
 		System.err.println("\n------------------------------------------------------------------------------------------------------");
 	}

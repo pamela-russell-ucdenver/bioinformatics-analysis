@@ -14,11 +14,11 @@ import guttmanlab.core.util.CountLogger;
 
 public class ComparativeTranslationalEfficiency {
 	
-	private TranslationalEfficiency sample1;
-	private TranslationalEfficiency sample2;
+	private TranslationalEfficiencyFromBam sample1;
+	private TranslationalEfficiencyFromBam sample2;
 	private static Logger logger = Logger.getLogger(ComparativeTranslationalEfficiency.class.getName());
 	
-	public ComparativeTranslationalEfficiency(TranslationalEfficiency teSample1, TranslationalEfficiency teSample2) {
+	public ComparativeTranslationalEfficiency(TranslationalEfficiencyFromBam teSample1, TranslationalEfficiencyFromBam teSample2) {
 		sample1 = teSample1;
 		sample2 = teSample2;
 	}
@@ -47,10 +47,10 @@ public class ComparativeTranslationalEfficiency {
 			double ribosomeExonTotal1, double controlExonTotal1, double ribosomeExonTotal2, double controlExonTotal2) throws IOException {
 		logger.info("");
 		logger.info("Initializing sample 1...");
-		TranslationalEfficiency te1 = new TranslationalEfficiency(ribosomeBam1, controlBam1, geneBed, chrSizes, ribosomeGenomeTotal1, controlGenomeTotal1, ribosomeExonTotal1, controlExonTotal1, isStrandSpecific);
+		TranslationalEfficiencyFromBam te1 = new TranslationalEfficiencyFromBam(ribosomeBam1, controlBam1, geneBed, chrSizes, ribosomeGenomeTotal1, controlGenomeTotal1, ribosomeExonTotal1, controlExonTotal1, isStrandSpecific);
 		logger.info("");
 		logger.info("Initializing sample 2...");
-		TranslationalEfficiency te2 = new TranslationalEfficiency(ribosomeBam2, controlBam2, geneBed, chrSizes, ribosomeGenomeTotal2, controlGenomeTotal2, ribosomeExonTotal2, controlExonTotal2, isStrandSpecific);
+		TranslationalEfficiencyFromBam te2 = new TranslationalEfficiencyFromBam(ribosomeBam2, controlBam2, geneBed, chrSizes, ribosomeGenomeTotal2, controlGenomeTotal2, ribosomeExonTotal2, controlExonTotal2, isStrandSpecific);
 		return new ComparativeTranslationalEfficiency(te1, te2);
 	}
 	

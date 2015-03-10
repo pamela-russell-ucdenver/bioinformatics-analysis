@@ -11,7 +11,7 @@ import net.sf.samtools.util.CloseableIterator;
 import score.SignificanceType;
 import translation.DifferentialTranslationalEfficiency;
 import translation.ORFFinder;
-import translation.TranslationalEfficiency;
+import translation.TranslationalEfficiencyFromBam;
 import translation.UpstreamORF;
 import guttmanlab.core.annotation.Gene;
 import guttmanlab.core.annotation.io.BEDFileIO;
@@ -250,7 +250,7 @@ public class CandidateFinderUORFRepression implements CandidateFinder<Gene> {
 		p.addDoubleArg("-l2", "Cutoff for absolute value of log2(ratio) for translational efficiency", true);
 		p.addStringArg("-ot", "Output table", true);
 		p.addBooleanArg("-d", "Debug logging", false, false);
-		p.addIntArg("-min", "Minimum number of reads mapping to CDS in ribosome and control fraction to compute TE", false, TranslationalEfficiency.TE_MIN_RAW_READS);
+		p.addIntArg("-min", "Minimum number of reads mapping to CDS in ribosome and control fraction to compute TE", false, TranslationalEfficiencyFromBam.TE_MIN_RAW_READS);
 		p.parse(args);
 		String genomeFasta = p.getStringArg("-gf");
 		String ribosomeBam1 = p.getStringArg("-rb1");
@@ -271,11 +271,11 @@ public class CandidateFinderUORFRepression implements CandidateFinder<Gene> {
 		double cutoffLog2ratio = p.getDoubleArg("-l2");
 		String outFile = p.getStringArg("-ot");
 		
-		TranslationalEfficiency.TE_MIN_RAW_READS = p.getIntArg("-min");
+		TranslationalEfficiencyFromBam.TE_MIN_RAW_READS = p.getIntArg("-min");
 		
 		if(p.getBooleanArg("-d")) {
 			logger.setLevel(Level.DEBUG);
-			TranslationalEfficiency.logger.setLevel(Level.DEBUG);
+			TranslationalEfficiencyFromBam.logger.setLevel(Level.DEBUG);
 			DifferentialTranslationalEfficiency.logger.setLevel(Level.DEBUG);
 		}
 		
