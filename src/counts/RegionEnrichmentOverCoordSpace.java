@@ -21,14 +21,14 @@ import guttmanlab.core.annotationcollection.BAMFragmentCollectionFactory;
 import guttmanlab.core.coordinatespace.CoordinateSpace;
 import guttmanlab.core.util.CommandLineParser;
 
-public class RegionEnrichment {
+public class RegionEnrichmentOverCoordSpace {
 	
 	private AnnotationCollection<? extends Annotation> data;
 	private CoordinateSpace coordSpace;
 	private Random rand;
-	private static Logger logger = Logger.getLogger(RegionEnrichment.class.getName());
+	private static Logger logger = Logger.getLogger(RegionEnrichmentOverCoordSpace.class.getName());
 	
-	private RegionEnrichment(String bamFile, String chrSizes) {
+	private RegionEnrichmentOverCoordSpace(String bamFile, String chrSizes) {
 		rand = new Random();
 		data = BAMFragmentCollectionFactory.createFromBam(bamFile);
 		coordSpace = new CoordinateSpace(chrSizes);
@@ -118,7 +118,7 @@ public class RegionEnrichment {
 		int numRand = p.getIntArg("-n");
 		String chrSizes = p.getStringArg("-c");
 		
-		RegionEnrichment re = new RegionEnrichment(bamFile, chrSizes);
+		RegionEnrichmentOverCoordSpace re = new RegionEnrichmentOverCoordSpace(bamFile, chrSizes);
 		AnnotationCollection<Gene> regions = BEDFileIO.loadFromFile(bedFile, chrSizes);
 		FileWriter writer = new FileWriter(outTable);
 		
