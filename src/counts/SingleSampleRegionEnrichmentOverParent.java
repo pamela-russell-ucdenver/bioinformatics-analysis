@@ -2,6 +2,7 @@ package counts;
 
 import guttmanlab.core.util.CommandLineParser;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
@@ -181,6 +182,7 @@ public class SingleSampleRegionEnrichmentOverParent {
 		subtractRegionsFromParent = p.getBooleanArg("-sr");
 		outDir = p.getStringArg("-o");
 		pairedEnd = p.getBooleanArg("-p");
+		new File(outDir).mkdir();
 		
 		SingleSampleRegionEnrichmentOverParent ss = new SingleSampleRegionEnrichmentOverParent(bam, geneBed, regionBed);
 		ss.writeEnrichmentsToFile();
