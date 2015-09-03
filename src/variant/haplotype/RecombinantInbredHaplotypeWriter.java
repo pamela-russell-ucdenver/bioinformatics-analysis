@@ -146,6 +146,7 @@ public class RecombinantInbredHaplotypeWriter {
 	 * @param end Interval end
 	 * @return REF or ALT if homozygous for every variant in the interval, NEITHER otherwise
 	 */
+	@SuppressWarnings("unused")
 	private Haplotype getParentalHaplotype(Parent parent, String chr, int start, int end) {
 		CloseableIterator<VariantContext> iter1 = queryParent(parent, chr, start, end);
 		CloseableIterator<VariantContext> iter2 = riVcfReader.query(chr, start, end);
@@ -231,17 +232,6 @@ public class RecombinantInbredHaplotypeWriter {
 		
 		logger.debug("GETTING_HAPLOTYPE\t" + chr + ":" + start + "-" + end);
 		
-		Haplotype parent1haplotype = getParentalHaplotype(Parent.PARENT1, chr, start, end);
-		Haplotype parent2haplotype = getParentalHaplotype(Parent.PARENT2, chr, start, end);
-		
-		// If neither parent has a consistent homozygous haplotype over this whole interval, don't get anything
-		if(parent1haplotype.equals(Haplotype.NEITHER) && parent2haplotype.equals(Haplotype.NEITHER)) {
-			logger.debug("BOTH_PARENTS_HAPLOTYPE_NEITHER");
-			// TODO merge later
-			//return VCFUtils.merge(rtrn, dict); 
-			return rtrn;
-		}
-		
 		GenotypesContext genotypesVariant1 = riVariant1.getGenotypes(); // All the genotypes for variant 1
 		GenotypesContext genotypesVariant2 = riVariant2.getGenotypes(); // All the genotypes for variant 2
 		
@@ -262,19 +252,17 @@ public class RecombinantInbredHaplotypeWriter {
 			riHaplotypes.put(sample, variant1origin);
 		}
 		
-		if(!parent1haplotype.equals(Haplotype.NEITHER)) {
-			Collection<VariantContext> p1 = copyParentGenotypes(Parent.PARENT1, chr, start, end, whichKeys(riHaplotypes, Parent.PARENT1));
-			Collection<VariantContext> b = copyParentGenotypes(Parent.PARENT1, chr, start, end, whichKeys(riHaplotypes, Parent.BOTH));
-			logger.debug("ADDING_COPIED_PARENT_GENOTYPES\t" + parent1name + ": " + p1.size());
-			logger.debug("ADDING_COPIED_PARENT_GENOTYPES\tboth: " + b.size());
-			rtrn.addAll(p1);
-			rtrn.addAll(b);
-		}
-		if(!parent2haplotype.equals(Haplotype.NEITHER)) {
-			Collection<VariantContext> p2 = copyParentGenotypes(Parent.PARENT2, chr, start, end, whichKeys(riHaplotypes, Parent.PARENT2));
-			logger.debug("ADDING_COPIED_PARENT_GENOTYPES\t" + parent2name + ": " + p2.size());
-			rtrn.addAll(p2);
-		}
+		Collection<VariantContext> p1 = copyParentGenotypes(Parent.PARENT1, chr, start, end, whichKeys(riHaplotypes, Parent.PARENT1));
+		Collection<VariantContext> p2 = copyParentGenotypes(Parent.PARENT2, chr, start, end, whichKeys(riHaplotypes, Parent.PARENT2));
+		Collection<VariantContext> b1 = copyParentGenotypes(Parent.PARENT1, chr, start, end, whichKeys(riHaplotypes, Parent.BOTH));
+		Collection<VariantContext> b2 = copyParentGenotypes(Parent.PARENT2, chr, start, end, whichKeys(riHaplotypes, Parent.BOTH));
+		logger.debug("ADDING_COPIED_PARENT_GENOTYPES\t" + parent1name + ": " + p1.size());
+		logger.debug("ADDING_COPIED_PARENT_GENOTYPES\t" + parent2name + ": " + p2.size());
+		logger.debug("ADDING_COPIED_PARENT_GENOTYPES\tboth: " + Integer.valueOf(b1.size() + b2.size()).toString());
+		rtrn.addAll(p1);
+		rtrn.addAll(p2);
+		rtrn.addAll(b1);
+		rtrn.addAll(b2);
 		
 		// TODO merge later
 		//return(VCFUtils.merge(rtrn, dict));
@@ -356,9 +344,14 @@ public class RecombinantInbredHaplotypeWriter {
 		CloseableIterator<VariantContext> iter = riVcfReader.iterator();
 		VariantContext first = null;
 		VariantContext second = iter.next();
+		int numDone = 0;
 		while(iter.hasNext()) {
 			first = second;
 			second = iter.next();
+			numDone++;
+			if(numDone % 1000 == 0) {
+				logger.info("Finished " + numDone + " pairs of variants from RI file");
+			}
 			if(!first.getContig().equals(second.getContig())) {
 				logger.warn("Moving from " + first.getContig() + " to " + second.getContig());
 				continue;
