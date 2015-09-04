@@ -7,10 +7,10 @@ public class SAMRecordUtils {
 	
 	/**
 	 * Convert reference position to position within a mapped read
-	 * Returns position on the read sequence itself regardless of mapping orientation
+	 * Ignores mapping orientation and just counts from left to right on reference strand
 	 * @param record Mapped read
 	 * @param zeroBasedRefPos Zero-based reference position
-	 * @return Zero-based position on read, or -1 if no position
+	 * @return Zero-based position on read (orientation ignored, just uses reference strand), or -1 if no position
 	 */
 	public static int getReadPositionAtReferencePosition(SAMRecord record, int zeroBasedRefPos) {
 		int oneBasedRtrn = -1;
@@ -31,10 +31,6 @@ public class SAMRecordUtils {
 		if(oneBasedRtrn < 0) {
 			// We didn't find the position in a mapped block
 			return oneBasedRtrn;
-		}
-		// Convert to read coordinates if mapped on minus strand
-		if(record.getReadNegativeStrandFlag()) {
-			oneBasedRtrn = record.getReadLength() - oneBasedRtrn + 1;
 		}
 		return oneBasedRtrn - 1;
 	}
