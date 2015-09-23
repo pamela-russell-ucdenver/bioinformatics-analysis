@@ -1,4 +1,4 @@
-package variant.haplotype;
+package variant.programs;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -16,6 +16,7 @@ import org.apache.log4j.Logger;
 import org.broadinstitute.gatk.utils.variant.GATKVariantContextUtils;
 
 import variant.VCFUtils;
+import variant.haplotype.Haplotype;
 import guttmanlab.core.util.CommandLineParser;
 import guttmanlab.core.util.StringParser;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -27,6 +28,7 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.SortingVariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
@@ -35,12 +37,34 @@ public class RecombinantInbredHaplotypeWriter {
 	
 	private String parent1name;
 	private String parent2name;
-	private VCFFileReader riVcfReader;
+	protected VCFFileReader riVcfReader;
 	private VCFFileReader parent1vcfReader;
 	private VCFFileReader parent2vcfReader;
-	private Collection<String> sampleNames;
+	protected Collection<String> sampleNames;
 	private SAMSequenceDictionary dict;
+	private Map<String, CentiMorganPosition> riMarkerCmPositions;
 	private static Logger logger = Logger.getLogger(RecombinantInbredHaplotypeWriter.class.getName());
+	private static float MAX_CM_DISTANCE = 1;
+	
+	private class CentiMorganPosition {
+		
+		private String chr;
+		private float cm;
+		
+		public CentiMorganPosition(String chrName, float cmPos) {
+			chr = chrName;
+			cm = cmPos;
+		}
+		
+		public String getChr() {
+			return chr;
+		}
+		
+		public float getCm() {
+			return cm;
+		}
+				
+	}
 	
 	/**
 	 * @param riVcf VCF file including parental strains and recombinant inbred strains
@@ -49,22 +73,67 @@ public class RecombinantInbredHaplotypeWriter {
 	 * @param parent1 Parental strain 1 name
 	 * @param parent2 Parental strain 2 name
 	 * @param refSizeFile Table of reference sequence sizes (line format: chr   size)
+	 * @param markerCmFile Table of centimorgan positions of markers in the RI VCF file (line format: ID   chr   pos)
 	 * @throws IOException
 	 */
-	private RecombinantInbredHaplotypeWriter(String riVcf, String parent1vcf, String parent2vcf, String parent1, String parent2, String refSizeFile) throws IOException {
+	protected RecombinantInbredHaplotypeWriter(String riVcf, String parent1vcf, String parent2vcf, String parent1, String parent2, String refSizeFile, String markerCmFile) throws IOException {
 		logger.info("");
 		logger.info("Instantiating...");
 		parent1name = parent1;
 		parent2name = parent2;
 		riVcfReader = new VCFFileReader(new File(riVcf));
-		parent1vcfReader = new VCFFileReader(new File(parent1vcf));
-		parent2vcfReader = new VCFFileReader(new File(parent2vcf));
+		if(parent1vcf != null) parent1vcfReader = new VCFFileReader(new File(parent1vcf));
+		if(parent2vcf != null) parent2vcfReader = new VCFFileReader(new File(parent2vcf));
 		sampleNames = riVcfReader.iterator().next().getSampleNames();
 		dict = createDict(refSizeFile);
+		riMarkerCmPositions = readCmPositionsFromTable(markerCmFile);
 		logger.info("Done instantiating.");
 	}
 	
-	private static SAMSequenceDictionary createDict(String refSizeFile) throws IOException {
+	private static float distance(CentiMorganPosition cm1, CentiMorganPosition cm2) {
+		if(!cm1.getChr().equals(cm2.getChr())) {
+			throw new IllegalArgumentException("Not on same chromosome");
+		}
+		return Math.abs(cm1.getCm() - cm2.getCm());
+	}
+
+	private Map<String, CentiMorganPosition> readCmPositionsFromTable(String file) throws IOException {
+		BufferedReader r = new BufferedReader(new FileReader(file));
+		StringParser s = new StringParser();
+		Map<String, CentiMorganPosition> rtrn = new HashMap<String, CentiMorganPosition>();
+		while(r.ready()) {
+			s.parse(r.readLine());
+			if(s.getFieldCount() != 3) {
+				r.close();
+				throw new IllegalArgumentException("Line format: snpID   chr   cM_pos");
+			}
+			String snpID = s.asString(0);
+			if(rtrn.containsKey(snpID)) {
+				logger.warn("Map already contains SNP " + snpID + ". Overwriting.");
+			}
+			String chr = s.asString(1);
+			float cm = s.asFloat(2);
+			rtrn.put(snpID, new CentiMorganPosition(chr, cm));
+		}
+		r.close();
+		return rtrn;
+	}
+	
+	/**
+	 * Check if two markers are within a centimorgan distance of each other
+	 * @param marker1 Marker 1
+	 * @param marker2 Marker 2
+	 * @param cmPositions Map of SNP ID to centimorgan position on chromosome
+	 * @param maxCm Max allowable cM distance
+	 * @return True iff the two markers are with maxCm of each other
+	 */
+	private static boolean markersWithinMaxCm(VariantContext marker1, VariantContext marker2, Map<String, CentiMorganPosition> cmPositions, float maxCm) {
+		String id1 = marker1.getID();
+		String id2 = marker2.getID();
+		return distance(cmPositions.get(id1), cmPositions.get(id2)) <= maxCm;
+	}
+	
+	public static SAMSequenceDictionary createDict(String refSizeFile) throws IOException {
 		logger.info("Creating SAM sequence dictionary...");
 		BufferedReader reader = new BufferedReader(new FileReader(refSizeFile));
 		StringParser sp = new StringParser();
@@ -83,7 +152,7 @@ public class RecombinantInbredHaplotypeWriter {
 		return rtrn;
 	}
 	
-	private enum Parent {
+	protected enum Parent {
 		PARENT1,
 		PARENT2,
 		BOTH,
@@ -106,14 +175,14 @@ public class RecombinantInbredHaplotypeWriter {
 		
 	}
 	
-	private String parentName(Parent parent) {
+	protected String parentName(Parent parent) {
 		switch(parent) {
 		case PARENT1:
 			return parent1name;
 		case PARENT2:
 			return parent2name;
 		case BOTH:
-			throw new IllegalArgumentException("NA for both parents");
+			return "both";
 		case NEITHER:
 			throw new IllegalArgumentException("Specify parent 1 or 2");
 		default:
@@ -125,9 +194,9 @@ public class RecombinantInbredHaplotypeWriter {
 		logger.debug("QUERYING_PARENT\t" + getParentName(parent) + "\t" + chr + ":" + start + "-" + end);
 		switch(parent) {
 		case PARENT1:
-			return parent1vcfReader.query(chr, start, end); //TODO this is empty
+			return parent1vcfReader.query(chr, start, end);
 		case PARENT2:
-			return parent2vcfReader.query(chr, start, end); //TODO this is empty
+			return parent2vcfReader.query(chr, start, end);
 		case BOTH:
 			throw new IllegalArgumentException("Choose one parent");
 		case NEITHER:
@@ -164,8 +233,12 @@ public class RecombinantInbredHaplotypeWriter {
 	 * @param sampleName Sample name to get 
 	 * @return Parent 1, Parent 2, or neither
 	 */
-	private Parent riVariantOrigin(GenotypesContext genotypes, String sampleName) {
+	protected Parent riVariantOrigin(GenotypesContext genotypes, String sampleName) {
 		Genotype sampleGenotype = genotypes.get(sampleName);
+		if(sampleGenotype.isNoCall()) {
+			//logger.debug("RI_VARIANT_ORIGIN\t" + sampleName + " has no call. Returning neither.");
+			return Parent.NEITHER;
+		}
 		Genotype parent1genotype = genotypes.get(parent1name);
 		Genotype parent2genotype = genotypes.get(parent2name);
 		boolean parent1 = sampleGenotype.sameGenotype(parent1genotype);
@@ -190,7 +263,7 @@ public class RecombinantInbredHaplotypeWriter {
 		return Parent.NEITHER;	
 	}
 	
-	private void checkRIvariantsConsecutive(VariantContext riVariant1, VariantContext riVariant2) {
+	protected void checkRIvariantsConsecutive(VariantContext riVariant1, VariantContext riVariant2) {
 		String chr = riVariant1.getContig();
 		if(!riVariant2.getContig().equals(chr)) {
 			throw new IllegalArgumentException("Variants must have some contig");
@@ -265,7 +338,7 @@ public class RecombinantInbredHaplotypeWriter {
 		rtrn.addAll(b2);
 		
 		// TODO merge later
-		//return(VCFUtils.merge(rtrn, dict));
+		//return VCFUtils.merge(rtrn, dict);
 		return rtrn;
 		
 	}
@@ -339,7 +412,7 @@ public class RecombinantInbredHaplotypeWriter {
 		VariantContextWriterBuilder builder = new VariantContextWriterBuilder();
 		builder.setOutputFile(outVcf);
 		builder.setReferenceDictionary(dict);
-		VariantContextWriter vcfWriter = builder.build();
+		VariantContextWriter vcfWriter = new SortingVariantContextWriter(builder.build(), 5000000);
 		vcfWriter.writeHeader(riVcfReader.getFileHeader());
 		CloseableIterator<VariantContext> iter = riVcfReader.iterator();
 		VariantContext first = null;
@@ -354,6 +427,10 @@ public class RecombinantInbredHaplotypeWriter {
 			}
 			if(!first.getContig().equals(second.getContig())) {
 				logger.warn("Moving from " + first.getContig() + " to " + second.getContig());
+				continue;
+			}
+			if(!markersWithinMaxCm(first, second, riMarkerCmPositions, MAX_CM_DISTANCE)) {
+				logger.warn("Markers not within " + MAX_CM_DISTANCE + " cM of each other. Skipping. " + first.getID() + "  " + second.getID());
 				continue;
 			}
 			Collection<VariantContext> middle = getFullHaplotype(first, second);
@@ -382,6 +459,7 @@ public class RecombinantInbredHaplotypeWriter {
 		p.addStringArg("-p2", "Parental sequence 2 name", true);
 		p.addStringArg("-o", "Output VCF file", true);
 		p.addBooleanArg("-d", "Debug logging", false, false);
+		p.addStringArg("-cm", "Table of centiMorgan positions for markers in RI VCF file (line format: ID   chr   cm", true);
 		p.parse(args);
 		if(p.getBooleanArg("-d")) {
 			logger.setLevel(Level.DEBUG);
@@ -395,8 +473,9 @@ public class RecombinantInbredHaplotypeWriter {
 		String parent2 = p.getStringArg("-p2");
 		String refSizeFile = p.getStringArg("-r");
 		String outVcf = p.getStringArg("-o");
+		String cmTable = p.getStringArg("-cm");
 		
-		RecombinantInbredHaplotypeWriter r = new RecombinantInbredHaplotypeWriter(riVcf, parent1vcf, parent2vcf, parent1, parent2, refSizeFile);
+		RecombinantInbredHaplotypeWriter r = new RecombinantInbredHaplotypeWriter(riVcf, parent1vcf, parent2vcf, parent1, parent2, refSizeFile, cmTable);
 		r.writeFullHaplotypeFile(outVcf);
 		
 		logger.info("");
