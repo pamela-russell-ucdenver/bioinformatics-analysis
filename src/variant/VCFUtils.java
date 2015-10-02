@@ -43,6 +43,7 @@ public class VCFUtils {
 		VariantContext first = variants.iterator().next();
 		GenomeLocParser glp = new GenomeLocParser(dict);
 		GenomeLoc firstLoc = glp.createGenomeLoc(first.getContig(), first.getStart(), first.getEnd(), true); 
+		logger.debug("Merging variants with position " + firstLoc.toString());
 		Map<String, Genotype> genotypeBySample = new HashMap<String, Genotype>(); // Save genotypes by sample so can check each sample always gets the same genotype
 		Collection<Allele> allAlleles = new HashSet<Allele>(); // Keep track of all possible alleles
 		String id = first.getID();
@@ -55,6 +56,7 @@ public class VCFUtils {
 				throw new IllegalArgumentException("All variants must have same genomic location: " + firstLoc.toString() + ", " + loc.toString());
 			}
 			Iterator<Genotype> iter = vc.getGenotypesOrderedByName().iterator();
+			Collection<String> toRemove = new HashSet<String>(); // Samples with problems to remove
 			while(iter.hasNext()) {
 				Genotype genotype = iter.next();
 				if(genotype.isNoCall()) {
@@ -63,13 +65,18 @@ public class VCFUtils {
 				String sample = genotype.getSampleName();
 				if(genotypeBySample.containsKey(sample)) { // Check sample hasn't been included with different genotype
 					if(!genotypeBySample.get(sample).sameGenotype(genotype)) {
-						throw new IllegalArgumentException("Same sample is included twice with different genotype: " + sample + " " 
-								+ genotype.toString() + " " + genotypeBySample.get(sample).toString());
+						toRemove.add(sample);
 					}
 				}
 				genotypeBySample.put(sample, genotype);
 				allAlleles.addAll(genotype.getAlleles());
 			}
+			String removed = "";
+			for(String sample : toRemove) { // Remove problem samples
+				removed += sample + " ";
+				genotypeBySample.remove(sample);
+			}
+			if(!toRemove.isEmpty()) logger.warn("Samples included twice with same genotype. Removed. " + loc.toString() + " " + removed);
 			allAlleles.add(vc.getReference());
 			allAlleles.addAll(vc.getAlternateAlleles());
 		}

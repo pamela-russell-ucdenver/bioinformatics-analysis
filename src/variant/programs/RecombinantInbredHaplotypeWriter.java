@@ -13,7 +13,6 @@ import java.util.Map;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.broadinstitute.gatk.utils.variant.GATKVariantContextUtils;
 
 import variant.VCFUtils;
 import variant.haplotype.Haplotype;
@@ -206,6 +205,10 @@ public class RecombinantInbredHaplotypeWriter {
 		}
 	}
 	
+	private CloseableIterator<VariantContext> queryRI(String chr, int start, int end) {
+		return riVcfReader.query(chr, start, end);
+	}
+	
 	/**
 	 * Get haplotype for the whole interval
 	 * Only return REF or ALT if the parent is homozygous for every variant in the interval in both VCF files
@@ -286,7 +289,7 @@ public class RecombinantInbredHaplotypeWriter {
 	}
 	
 	/**
-	 * Get genotypes for all parental SNPs between these two SNPs, not including the two original SNPs
+	 * Get genotypes for all parental SNPs between these two SNPs, including the two original SNPs
 	 * Try to get full haplotype if the sample agrees with one parent at both given SNPs
 	 * @param riVariant1
 	 * @param riVariant2
@@ -329,6 +332,10 @@ public class RecombinantInbredHaplotypeWriter {
 		Collection<VariantContext> p2 = copyParentGenotypes(Parent.PARENT2, chr, start, end, whichKeys(riHaplotypes, Parent.PARENT2));
 		Collection<VariantContext> b1 = copyParentGenotypes(Parent.PARENT1, chr, start, end, whichKeys(riHaplotypes, Parent.BOTH));
 		Collection<VariantContext> b2 = copyParentGenotypes(Parent.PARENT2, chr, start, end, whichKeys(riHaplotypes, Parent.BOTH));
+		Collection<VariantContext> n = copyOwnGenotypes(chr, start, end, whichKeys(riHaplotypes, Parent.NEITHER));
+		p1.addAll(copyOwnGenotypes(chr, start, end, whichKeys(riHaplotypes, Parent.PARENT1))); // Also include genotypes from RI vcf file
+		p2.addAll(copyOwnGenotypes(chr, start, end, whichKeys(riHaplotypes, Parent.PARENT2))); // Also include genotypes from RI vcf file
+		b1.addAll(copyOwnGenotypes(chr, start, end, whichKeys(riHaplotypes, Parent.BOTH))); // Also include genotypes from RI vcf file
 		logger.debug("ADDING_COPIED_PARENT_GENOTYPES\t" + parent1name + ": " + p1.size());
 		logger.debug("ADDING_COPIED_PARENT_GENOTYPES\t" + parent2name + ": " + p2.size());
 		logger.debug("ADDING_COPIED_PARENT_GENOTYPES\tboth: " + Integer.valueOf(b1.size() + b2.size()).toString());
@@ -336,10 +343,17 @@ public class RecombinantInbredHaplotypeWriter {
 		rtrn.addAll(p2);
 		rtrn.addAll(b1);
 		rtrn.addAll(b2);
+		rtrn.addAll(n);
 		
-		// TODO merge later
-		//return VCFUtils.merge(rtrn, dict);
-		return rtrn;
+		try {
+			return VCFUtils.merge(rtrn, dict);
+		} catch(IllegalArgumentException e) {
+			logger.warn("Caught exception between " + riVariant1.getID() + " and " + riVariant2.getID() + ": "
+					+ e.getMessage());
+			logger.warn("Removing samples that match neither parent over region");
+			rtrn.removeAll(n);
+			return rtrn;
+		}
 		
 	}
 	
@@ -406,13 +420,42 @@ public class RecombinantInbredHaplotypeWriter {
 		return rtrn;
 	}
 	
+	/**
+	 * Just make new variant contexts with copied genotypes from RI vcf file for the specified samples
+	 * @param chr Interval chromosome
+	 * @param start Interval start
+	 * @param end Interval end
+	 * @param samples Samples to copy
+	 * @return Variant contexts with these samples' genotypes only
+	 */
+	private Collection<VariantContext> copyOwnGenotypes(String chr, int start, int end, Collection<String> samples) {
+		Collection<VariantContext> rtrn = new HashSet<VariantContext>();
+		CloseableIterator<VariantContext> iter = queryRI(chr, start, end);
+		while(iter.hasNext()) {
+			VariantContext vc = iter.next();
+			Collection<Genotype> genotypes = new ArrayList<Genotype>();
+			for(String sample : samples) {
+				Genotype genotype = vc.getGenotype(sample);
+				genotypes.add(genotype);
+			}
+			List<Allele> alleleList = vc.getAlleles();
+			
+			VariantContextBuilder vcBuilder = new VariantContextBuilder("NA", chr, vc.getStart(), vc.getEnd(), alleleList);
+			vcBuilder.genotypes(genotypes);
+			VariantContext newVc = vcBuilder.make();
+			rtrn.add(newVc);
+		}
+		iter.close();
+		return rtrn;
+	}
+	
 	private void writeFullHaplotypeFile(String outVcf) {
 		logger.info("");
 		logger.info("Writing vcf file with extended haplotypes to " + outVcf + "...");
 		VariantContextWriterBuilder builder = new VariantContextWriterBuilder();
 		builder.setOutputFile(outVcf);
 		builder.setReferenceDictionary(dict);
-		VariantContextWriter vcfWriter = new SortingVariantContextWriter(builder.build(), 5000000);
+		VariantContextWriter vcfWriter = new SortingVariantContextWriter(builder.build(), 50000000);
 		vcfWriter.writeHeader(riVcfReader.getFileHeader());
 		CloseableIterator<VariantContext> iter = riVcfReader.iterator();
 		VariantContext first = null;
@@ -430,17 +473,15 @@ public class RecombinantInbredHaplotypeWriter {
 				continue;
 			}
 			if(!markersWithinMaxCm(first, second, riMarkerCmPositions, MAX_CM_DISTANCE)) {
-				logger.warn("Markers not within " + MAX_CM_DISTANCE + " cM of each other. Skipping. " + first.getID() + "  " + second.getID());
+				logger.debug("Markers not within " + MAX_CM_DISTANCE + " cM of each other. Skipping. " + first.getID() + "  " + second.getID());
 				continue;
 			}
-			Collection<VariantContext> middle = getFullHaplotype(first, second);
+			Collection<VariantContext> hap = getFullHaplotype(first, second);
 			logger.debug("FILLED_IN_HAPLOTYPE\t" + first.getContig() + ":" + first.getStart() + "-" + second.getStart() + "\t" + 
-					middle.size() + " positions in between");
-			vcfWriter.add(first);
-			for(VariantContext vc : middle) {
+					hap.size() + " positions in between");
+			for(VariantContext vc : hap) {
 				vcfWriter.add(vc);
 			}
-			vcfWriter.add(second);
 		}
 		iter.close();
 		vcfWriter.close();
