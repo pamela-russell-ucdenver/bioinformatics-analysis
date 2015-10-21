@@ -76,7 +76,7 @@ public class VCFUtils {
 				removed += sample + " ";
 				genotypeBySample.remove(sample);
 			}
-			if(!toRemove.isEmpty()) logger.warn("Samples included twice with same genotype. Removed. " + loc.toString() + " " + removed);
+			if(!toRemove.isEmpty()) logger.warn("Samples included twice with different genotype. Removed. " + loc.toString() + " " + removed);
 			allAlleles.add(vc.getReference());
 			allAlleles.addAll(vc.getAlternateAlleles());
 		}

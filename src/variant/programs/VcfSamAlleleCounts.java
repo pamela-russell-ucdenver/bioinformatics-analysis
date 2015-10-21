@@ -1,4 +1,4 @@
-package variant.allele;
+package variant.programs;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -10,6 +10,9 @@ import java.util.Map;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import variant.allele.AlleleCounts;
+import variant.allele.VariantAlleleCounts;
+import variant.allele.VcfSamAllele;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
