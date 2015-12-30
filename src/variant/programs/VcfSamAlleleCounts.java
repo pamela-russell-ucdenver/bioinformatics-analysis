@@ -11,6 +11,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import annotation.OverlapUtils;
+import variant.VCFUtils;
 import variant.allele.AlleleCounts;
 import variant.allele.VariantAlleleCounts;
 import variant.allele.VcfSamAllele;
@@ -44,7 +45,7 @@ public class VcfSamAlleleCounts implements VariantAlleleCounts<VariantContext, S
 	public AlleleCounts getAlleleCounts(VariantContext variant, SAMFileReader dataset) {
 		VcfSamAllele vsa = new VcfSamAllele();
 		AlleleCounts rtrn = new AlleleCounts();
-		SAMRecordIterator iter = dataset.queryOverlapping(variant.getContig(), variant.getStart(), variant.getEnd());
+		SAMRecordIterator iter = dataset.queryOverlapping(variant.getContig(), VCFUtils.vcfToZeroBased(variant.getStart()), VCFUtils.vcfToZeroBased(variant.getEnd()));
 		while(iter.hasNext()) {
 			try {
 				SAMRecord record = iter.next();
@@ -79,7 +80,7 @@ public class VcfSamAlleleCounts implements VariantAlleleCounts<VariantContext, S
 			throw new IllegalArgumentException("Counts map is empty");
 		}
 		String line = vc.getContig() + "\t";
-		line += vc.getStart() + "\t";
+		line += VCFUtils.vcfToZeroBased(vc.getStart()) + "\t";
 		Iterator<Allele> ai = vc.getAlleles().iterator();
 		line += ai.next().getBaseString();
 		while(ai.hasNext()) {
@@ -102,8 +103,8 @@ public class VcfSamAlleleCounts implements VariantAlleleCounts<VariantContext, S
 				Gene gene = overlapIter.next();
 				overlapperIDs += gene.getName() + ";";
 				overlapperTranscriptStrands += gene.getOrientation().toString() + ";";
-				overlapperTranscriptCoords += gene.getRelativePositionFrom5PrimeOfFeature(vc.getStart()) + ";";
-				overlapperExonNumbers += OverlapUtils.exonNumberFrom5Prime(gene, vc.getContig(), vc.getStart()) + ";";
+				overlapperTranscriptCoords += gene.getRelativePositionFrom5PrimeOfFeature(VCFUtils.vcfToZeroBased(vc.getStart())) + ";";
+				overlapperExonNumbers += OverlapUtils.exonNumberFrom5Prime(gene, vc.getContig(), VCFUtils.vcfToZeroBased(vc.getStart())) + ";";
 			}
 		overlapIter.close();
 		}
@@ -133,7 +134,7 @@ public class VcfSamAlleleCounts implements VariantAlleleCounts<VariantContext, S
 			VariantContext vc = vcIter.next();
 			AlleleCounts ac = getAlleleCounts(vc, samReader);
 			if(!ac.isEmpty()) {
-				writer.write(getTableLine(vc, ac, overlap.getOverlappers(vc.getContig(), vc.getStart(), vc.getEnd() + 1)) + "\n");
+				writer.write(getTableLine(vc, ac, overlap.getOverlappers(vc.getContig(), VCFUtils.vcfToZeroBased(vc.getStart()), VCFUtils.vcfToZeroBased(vc.getEnd()) + 1)) + "\n");
 			}
 		}
 		vcfReader.close();
