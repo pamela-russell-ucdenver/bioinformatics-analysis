@@ -25,7 +25,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.broadinstitute.gatk.utils.GenomeLoc;
 import org.broadinstitute.gatk.utils.GenomeLocParser;
-import org.broadinstitute.gatk.utils.variant.ReferenceConfidenceVariantContextMerger;
 
 import variant.programs.RecombinantInbredHaplotypeWriter;
 
