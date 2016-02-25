@@ -35,6 +35,7 @@ import samtools.util.SamtoolsUtils;
  * Case is ignored
  * Ns are treated as wildcards that everything matches
  * Reverse complement matches are NOT included
+ * Transcripts shorter than the specified kmer length are allowed to have shorter matches with queries
  * @author prussell
  *
  */
@@ -108,6 +109,8 @@ public class PerfectKmerSearch {
 			this.queryKmer = queryKmer;
 			this.target = target;
 		}
+		
+		public int getK() {return queryKmer.getSeq().length();}
 		
 		/**
 		 * @return Query/target pair object for this query and target
@@ -228,6 +231,7 @@ public class PerfectKmerSearch {
 			rtrn.setReadPairedFlag(false);
 			rtrn.setReferenceName(targetMatchStart.getSequence().getName());
 			rtrn.setMappingQuality(255); // mapping quality unknown
+			rtrn.setReadBases(queryMatchStart.getSequence().getSequenceBases().getBytes());;
 			
 			return rtrn;
 		}
@@ -275,19 +279,9 @@ public class PerfectKmerSearch {
 	 * @return The first match to each target as SAM records
 	 */	
 	private Collection<SAMRecord> samRecordFirstKmerMatchEachTarget(FastqSequence record) {
-		
-		// Check how many N's are in the read
-		// TODO this adds a lot of time
+		String queryName = record.getName();
 		String querySeq = record.getSequence();
-		int numNs = 0;
-		for(int i = 0; i < querySeq.length(); i++) {
-			if(Character.toUpperCase(querySeq.charAt(i)) == 'N') {numNs++;}
-		}
-		if((double) numNs / (double) querySeq.length() > MAX_PCT_N) {
-			throw new TooManyNsException("Read has >" + MAX_PCT_N + " Ns:\t" + record.getName() + "\t" + querySeq);
-		}
-		
-		return samRecordFirstKmerMatchEachTarget(new Sequence(record.getName(), record.getSequence()));
+		return samRecordFirstKmerMatchEachTarget(new Sequence(queryName, querySeq));
 	}
 	
 	/**
@@ -311,6 +305,9 @@ public class PerfectKmerSearch {
 	 * @throws IOException
 	 */
 	private void writeFirstKmerMatchEachTarget(String queryFastq, String outputBam) throws IOException {
+		
+		logger.info("");
+		logger.info("Writing matches for reads in " + queryFastq + " to " + outputBam + "...");
 		
 		BAMFileWriter writer = new BAMFileWriter(new File(outputBam));
 		writer.setSortOrder(SAMFileHeader.SortOrder.unsorted, false);
@@ -352,10 +349,10 @@ public class PerfectKmerSearch {
 		logger.info("Reads mapped to multiple targets:\t" + numMultiMapped);
 		logger.info("Reads unmapped:\t" + numUnmapped);
 		if(numTooShort > 0) {
-			logger.warn("Reads skipped because they were shorter than " + k + ":\t" + numTooShort);
+			logger.warn("Reads skipped because they were too short:\t" + numTooShort);
 		}
 		if(numIllegalChar > 0) {
-			logger.warn("Reads skipped because they contain an illegal character " + k + ":\t" + numIllegalChar);
+			logger.warn("Reads skipped because they contain an illegal character:\t" + numIllegalChar);
 		}
 		if(numTooManyNs > 0) {
 			logger.warn("Reads skipped because they contain > " + MAX_PCT_N + " N's:\t" + numTooManyNs);
@@ -383,6 +380,7 @@ public class PerfectKmerSearch {
 		String targetName = match.getTargetName();
 		int queryStart = match.getQueryStartPos();
 		int targetStart = match.getTargetStartPos();
+		int matchLen = match.getK();
 		while(iter.hasNext()) {
 			IndividualKmerMatch next = iter.next();
 			String nextQueryName = next.getQueryName();
@@ -394,13 +392,19 @@ public class PerfectKmerSearch {
 				throw new IllegalArgumentException("Must have only one target: " + targetName + ", " + nextTargetName);
 			}
 			int nextQueryStart = next.getQueryStartPos();
-			if(nextQueryStart < queryStart) {queryStart = nextQueryStart;}
+			if(nextQueryStart < queryStart) {
+				matchLen = next.getK();
+				queryStart = nextQueryStart;
+			}
 			int nextTargetStart = next.getTargetStartPos();
-			if(nextTargetStart < targetStart) {targetStart = nextTargetStart;}
+			if(nextTargetStart < targetStart) {
+				targetStart = nextTargetStart;
+				matchLen = next.getK();
+			}
 		}
 		SequencePos queryMatchPos = new SequencePos(query, queryStart);
 		SequencePos targetMatchPos = new SequencePos(target, targetStart);
-		return new QueryTargetMatch(queryMatchPos, targetMatchPos, k);
+		return new QueryTargetMatch(queryMatchPos, targetMatchPos, matchLen);
 	}
 	
 	/**
@@ -442,11 +446,12 @@ public class PerfectKmerSearch {
 		
 	}
 	
-	private int k; // Kmer length
+	private int mink; // Minimum kmer length (set to shortest target length when making kmer index for targets, or to maxk, whichever is smaller)
+	private int maxk; // Maximum kmer length to search for
 	private Map<String, Collection<SequencePos>> targetKmers; // Key is kmer; value is collection of sequences with kmer and the match position
 	private static Logger logger = Logger.getLogger(PerfectKmerSearch.class.getName());
 	private SAMFileHeader samHeader; // SAM header for target sequences
-	private static double MAX_PCT_N = 0.05;
+	private static double MAX_PCT_N = 0.05; // Max percentage of N's in reads
 	
 	/**
 	 * The legal characters converted to upper case, not including N
@@ -454,11 +459,12 @@ public class PerfectKmerSearch {
 	public static final char[] alphabet = {'A', 'C', 'G', 'T'};
 	
 	/**
-	 * @param k Length of kmers to match
+	 * @param k Length of kmers to match. Shorter matches are allowed for shorter target transcripts.
 	 * @param fasta Fasta file of target sequences
 	 */
 	public PerfectKmerSearch(int k, String fasta) {
-		this.k = k;
+		this.maxk = k;
+		setMinK(fasta);
 		createIndex(fasta);
 		samHeader = SamtoolsUtils.createSamHeader(fasta);
 	}
@@ -499,24 +505,58 @@ public class PerfectKmerSearch {
 		}
 	}
 	
+	private static final int MAX_LEN_TO_CHECK_N_CONTENT = 5000;
+	
 	/**
 	 * Check that a sequence is valid
 	 * @param seq Sequence
 	 */
 	private void validateSequence(Sequence seq) {
+		
 		String bases = seq.getSequenceBases();
 		int len = bases.length();
-		if(len < k) {
-			throw new SequenceTooShortException("Sequence length <" + k + ": " + seq.getName());
+		
+		if(len < mink) {
+			throw new SequenceTooShortException("Query shorter than " + mink + ":\t" + seq.getName() + "\t" + bases);
 		}
+		
+		boolean checkN = len <= MAX_LEN_TO_CHECK_N_CONTENT;
+		if(!checkN) {
+			logger.warn("Not checking for N content because sequence is too long: " + seq.getName());
+		}
+		
+		int numNs = 0;
 		for(int i = 0; i < len; i++) {
 			char c = bases.charAt(i);
+			// Check that the sequence includes no illegal characters
 			if(!charIsLegal(c)) {
 				throw new IllegalCharacterException("Illegal char in sequence " + seq.getName() + ": " + c);
 			}
+			// Make sure there aren't too many N's
+			if(checkN) {
+				if(Character.toUpperCase(c) == 'N') {numNs++;}
+			}
+		}
+		if((double) numNs / (double) len > MAX_PCT_N) {
+			throw new TooManyNsException("Sequence has >" + MAX_PCT_N + " Ns:\t" + seq.getName() + "\t" + bases);
+		}
+		
+	}
+	
+	/**
+	 * Set minimum kmer length field as the length of the shortest sequence in a fasta file
+	 * @param fasta Fasta file
+	 */
+	private void setMinK(String fasta) {
+		Collection<Sequence> targets = new FastaFileIOImpl().readFromFile(fasta);
+		mink = maxk;
+		for(Sequence target : targets) {
+			int len = target.getLength();
+			if(len < mink) {mink = len;}
 		}
 	}
 	
+
 	/**
 	 * Store kmers and their matches to target sequences
 	 * @param fasta Fasta file of target sequences
@@ -528,9 +568,6 @@ public class PerfectKmerSearch {
 		Collection<Sequence> targets = new FastaFileIOImpl().readFromFile(fasta);
 		int numSkipped = 0;
 		for(Sequence target : targets) {
-			logger.debug("");
-			logger.debug("TARGET\t" + target.getName());
-			logger.debug("TARGET_SEQ\t" + target.getSequenceBases());
 			try {
 				validateSequence(target);
 			} catch(SequenceTooShortException e) {
@@ -538,13 +575,21 @@ public class PerfectKmerSearch {
 				numSkipped++;
 				continue;
 			}
-			for(KmerSubsequence kmer : getKmers(target.getSequenceBases())) {
+			int len = target.getLength();
+			if(len < mink) {
+				throw new IllegalStateException("Target sequence length (" + len + ") is shorter than min kmer length (" + mink + "): " + target.getName());
+			}
+			/**
+			 *  Only index a single length of kmer
+			 *  The kmer length is maxk or the transcript length, whichever is shorter
+			 */
+			int k = Math.min(len, maxk);
+			for(KmerSubsequence kmer : getKmers(target.getSequenceBases(), k, k)) {
 				String kmerSeq = kmer.getSeq();
 				if(!targetKmers.containsKey(kmerSeq)) {
 					targetKmers.put(kmerSeq, new TreeSet<SequencePos>());
 				}
 				targetKmers.get(kmerSeq).add(new SequencePos(target, kmer.getOrigSeqPos()));
-				logger.debug("ADDED\t" + kmer + "\t" + target.getName());
 			}
 		}
 		if(numSkipped > 0) {
@@ -552,6 +597,7 @@ public class PerfectKmerSearch {
 			logger.warn("Skipped " + numSkipped + " target sequences that did not validate");
 			logger.warn("");
 		}
+		logger.info("Done creating index. Minimum k is " + mink + ". Maximum k is " + maxk + ".");
 	}
 	
 	/**
@@ -594,34 +640,29 @@ public class PerfectKmerSearch {
 	 * Get all kmer substrings of the sequence, converted to upper case
 	 * N's are expanded so the method returns multiple versions of each kmer where there is an N
 	 * Clients should call validateSequence() before calling this method to get meaningful error messages
+	 * If sequence is shorter than the maximum kmer length, only get kmers up to the sequence length
 	 * @param sequence Target sequence to break into kmers
+	 * @param minK Minimum kmer length to get
+	 * @param maxK Maximum kmer length to get
 	 * @return Set of kmers converted to upper case with Ns expanded to all possible values
-	 * @throws IllegalArgumentException if sequence is shorter than kmer length
 	 */
-	private Collection<KmerSubsequence> getKmers(String sequence) {
+	private Collection<KmerSubsequence> getKmers(String sequence, int minK, int maxK) {
 		int len = sequence.length();
 		Collection<KmerSubsequence> rtrn = new ArrayList<KmerSubsequence>();
-		StringBuilder builder = new StringBuilder(sequence.substring(0, k));
-		logger.debug("");
-		logger.debug("EXPANDING_Ns for kmer\t" + builder.toString());
-		Collection<String> expandedNs = expandNs(builder.toString().toUpperCase());
-		for(String s : expandedNs) {
-			rtrn.add(new KmerSubsequence(s, 0));
-		}
-		for(int i = k; i < len; i++) {
-			builder.deleteCharAt(0);
-			builder.append(sequence.charAt(i));
-			logger.debug("");
-			logger.debug("EXPANDING_Ns for kmer\t" + builder.toString());
-			Collection<String> expandedNs2 = expandNs(expandNs(builder.toString().toUpperCase()));
-			for(String s : expandedNs2) {
-				rtrn.add(new KmerSubsequence(s, i - k + 1));
+		for(int i = minK; i <= Math.min(len,maxK); i++) {
+			StringBuilder builder = new StringBuilder(sequence.substring(0, i));
+			Collection<String> expandedNs = expandNs(builder.toString().toUpperCase());
+			for(String s : expandedNs) {
+				rtrn.add(new KmerSubsequence(s, 0));
 			}
-		}
-		if(logger.getLevel().equals(Level.DEBUG)) {
-			StringBuilder s = new StringBuilder();
-			for(KmerSubsequence kmer : rtrn) s.append(kmer.getSeq() + ";");
-			logger.debug("KMERS\t" + sequence + "\t" + s.toString());
+			for(int p = i; p < len; p++) {
+				builder.deleteCharAt(0);
+				builder.append(sequence.charAt(p));
+				Collection<String> expandedNs2 = expandNs(expandNs(builder.toString().toUpperCase()));
+				for(String s : expandedNs2) {
+					rtrn.add(new KmerSubsequence(s, p - i + 1));
+				}
+			}
 		}
 		return rtrn;
 	}
@@ -634,7 +675,7 @@ public class PerfectKmerSearch {
 	 */
 	private Collection<IndividualKmerMatch> getIndividualKmerMatches(Sequence query) {
 		validateSequence(query);
-		Collection<KmerSubsequence> queryKmers = getKmers(query.getSequenceBases());
+		Collection<KmerSubsequence> queryKmers = getKmers(query.getSequenceBases(), mink, maxk);
 		Collection<IndividualKmerMatch> rtrn = new HashSet<IndividualKmerMatch>();
 		for(KmerSubsequence queryKmer : queryKmers) {
 			String kmerSeq = queryKmer.getSeq();
@@ -680,6 +721,9 @@ public class PerfectKmerSearch {
 		String bam = p.getStringArg("-b");
 		int k = p.getIntArg("-k");
 		MAX_PCT_N = p.getDoubleArg("-mn");
+		if(MAX_PCT_N < 0 || MAX_PCT_N > 1) {
+			throw new IllegalArgumentException("Invalid value for max proportion of N's: " + MAX_PCT_N);
+		}
 		
 		logger.setLevel(Level.INFO);
 		PerfectKmerSearch pks = new PerfectKmerSearch(k, fasta);
