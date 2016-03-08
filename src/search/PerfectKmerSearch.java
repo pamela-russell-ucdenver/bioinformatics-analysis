@@ -227,7 +227,7 @@ public class PerfectKmerSearch {
 			SAMRecord rtrn = new SAMRecord(samHeader);
 			rtrn.setCigar(cigar);
 			rtrn.setAlignmentStart(targetMatchStart.getPos() + 1);
-			rtrn.setReadName(queryMatchStart.getSequence().getName());
+			rtrn.setReadName(queryMatchStart.getSequence().getName().split("\\s+")[0]); // Only take first field before whitespace
 			rtrn.setReadPairedFlag(false);
 			rtrn.setReferenceName(targetMatchStart.getSequence().getName());
 			rtrn.setMappingQuality(255); // mapping quality unknown
