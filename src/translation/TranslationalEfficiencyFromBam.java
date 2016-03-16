@@ -12,7 +12,7 @@ import score.AbstractRegionScore;
 import score.GenericRegionScore;
 import score.RegionScore;
 import score.SignificanceType;
-import bam.BamCountRegionOverlappers;
+import util.programs.counts.BamCountRegionOverlappers;
 import broad.core.math.ScanStatistics;
 import net.sf.samtools.util.CloseableIterator;
 import guttmanlab.core.annotation.Annotation;

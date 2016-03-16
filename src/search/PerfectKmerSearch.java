@@ -28,7 +28,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import samtools.util.SamtoolsUtils;
+import util.SamtoolsUtils;
 
 /**
  * A query is considered to match a target if they share a perfect kmer match of the specified length

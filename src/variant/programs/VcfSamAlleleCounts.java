@@ -10,7 +10,7 @@ import java.util.Map;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import annotation.OverlapUtils;
+import util.OverlapUtils;
 import variant.VCFUtils;
 import variant.allele.AlleleCounts;
 import variant.allele.VariantAlleleCounts;
